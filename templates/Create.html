@@ -1,0 +1,41 @@
+
+    {% extends "Template.html" %}
+    
+    {% block BODY %}
+
+	<div data-role="page">
+	    <div data-role="header">
+			<a href="#" data-rel="back" class="ui-btn ui-shadow ui-corner-all ui-icon-back ui-btn-icon-notext ui-btn-left" title="back"></a>
+			<h1>{% if not STORY %} Create {% else %} Edit {% endif %} Story</h1>
+			<a href="{{ HOST }}" data-ajax="false" class="ui-btn ui-shadow ui-corner-all ui-icon-home ui-btn-icon-notext ui-btn-right" title="Home"></a>
+	    </div>
+
+	    <div role="main" class="ui-content">
+
+			<form data-ajax="false" method="post" action="{{ HOST }}/create/">
+				{% if STORY.id %}
+					<input type="hidden" name="storyID" value="{{ STORY.id }}">
+				{% endif %}
+				<select name="private" data-role="slider">
+					<option value="Public">Public</option>
+					<option value="Private" {% if STORY.private %} selected="" {% endif %}>Private</option>
+				</select>
+				<input type="text" name="title" placeholder="Title" value="{{ STORY.title }}">
+				<textarea name="summary" placeholder="Summary">{% ifnotequal STORY.summary "" %}{{ STORY.summary }}{% endifnotequal %}</textarea>
+				<input type="submit" value="Submit">
+			</form>
+
+			<a href="#" data-rel="back" data-role="button">Cancel</a>
+
+			{% if STORY %}
+				<form data-ajax="false" method="post" action="{{ HOST }}/create/">
+				<input type="hidden" name="delete" value="delete">
+				<input type="hidden" name="storyID" value="{{ STORY.id }}">
+				<input type="submit" value="Delete story">
+				</form>
+			{% endif %}
+
+	    </div>
+	</div>
+
+    {% endblock %}

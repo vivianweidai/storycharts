@@ -1,0 +1,22 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+libraries:
+- name: webapp2
+  version: "2.5.1"
+
+handlers:
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+
+- url: /static/images/ajax-loader.gif
+  static_files: static/ajax-loader.gif
+  upload: static/ajax-loader.gif
+
+- url: /static
+  static_dir: static
+
+- url: /.*
+  script: StoryCharts.app
+  secure: always

@@ -1,0 +1,38 @@
+
+    {% extends "Template.html" %}
+    
+    {% block BODY %}
+
+	<div data-role="page">
+	    <div data-role="header">
+			<a href="#" data-rel="back" class="ui-btn ui-shadow ui-corner-all ui-icon-back ui-btn-icon-notext ui-btn-left" title="back"></a>
+			<h1>{% if not SCENE %} Add {% else %} Edit {% endif %} scene</h1>
+			<a href="{{ HOST }}" data-ajax="false" class="ui-btn ui-shadow ui-corner-all ui-icon-home ui-btn-icon-notext ui-btn-right" title="Home"></a>
+	    </div>
+
+	    <div role="main" class="ui-content">
+			<form data-ajax="false" method="post" action="{{ HOST }}/scene/">
+				<input type="hidden" name="storyID" value="{{ STORY.id }}">
+				{% if SCENE %}
+					<input type="hidden" name="sceneID" value="{{ SCENE.id }}">
+				{% endif %}
+				<input type="text" name="title" placeholder="Title" value="{{ SCENE.title }}">
+				<textarea name="description" placeholder="Description">{{ SCENE.description }}</textarea>
+				<input id="submit" type="submit" value="Submit">
+			</form>
+
+			<a href="#" data-rel="back" data-role="button">Cancel</a>
+
+			{% if SCENE %}
+				<form data-ajax="false" method="post" action="{{ HOST }}/scene/">
+					<input type="hidden" name="delete" value="delete">
+					<input type="hidden" name="storyID" value="{{ STORY.id }}">
+					<input type="hidden" name="sceneID" value="{{ SCENE.id }}">
+					<input type="submit" value="Delete scene">
+				</form>
+			{% endif %}
+
+	    </div>
+	</div>
+
+    {% endblock %}

@@ -1,0 +1,191 @@
+
+    {% extends "Template.html" %}
+    
+    {% block BODY %}
+
+	<div data-role="page">
+	    <div data-role="header">
+            <a href="#" data-rel="back" class="ui-btn ui-shadow ui-corner-all ui-icon-back ui-btn-icon-notext ui-btn-left" title="back"></a>
+            <h1>{{ STORY.title }}{% ifequal USER.user_id STORY.userid %} <span data-role="none"><img src="{{ HOST }}/static/IconOwn.png" title="Editable: you created this story"></span> {% endifequal %} {% if STORY.private %} <span data-role="none"><img src="{{ HOST }}/static/IconPrivate.png" title="Private: only you can see this story"></span>{% endif %}</h1>
+            <a href="{{ HOST }}" data-ajax="false" class="ui-btn ui-shadow ui-corner-all ui-icon-home ui-btn-icon-notext ui-btn-right" title="Home"></a>
+	    </div>
+            
+        {% ifequal USER.user_id STORY.userid %}
+            <div role="main" class="ui-content">
+
+                {% if CHART %}
+                    <div data-role="collapsible" data-collapsed="false" data-inset="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u" data-iconpos="right">
+                        <h3>Story Chart</h3>
+                        <div id="chartdiv"></div>
+                    </div>
+                {% endif %}
+                
+                <div data-role="collapsible" data-inset="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u" data-iconpos="right">
+                    <h3>Summary</h3>
+                    <ul data-role="listview">
+                        <li><a href="{{ HOST }}/create/{{ STORY.id }}/"><p style="font-size: 1.2em; font-family: georgia, times, serif; line-height: 1.5em; font-weight: 400; white-space: pre-wrap;">{{ STORY.summary }}</p></a></li>
+                    </ul>
+                </div>
+
+                {% for PLOT in PLOTS %}
+                    <div data-role="collapsible" data-inset="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u" data-iconpos="right">
+                        <h3>{{ PLOT.title }}</h3>
+                        <ul data-role="listview">
+                            <li><a href="{{ HOST }}/plot/{{ PLOT.storyid}}/{{ PLOT.id }}/"><p style="font-size: 1.2em; font-family: georgia, times, serif; line-height: 1.5em; font-weight: 400; white-space: pre-wrap;">{{ PLOT.description }}</p></a></li>
+                        </ul>
+                    </div>
+                {% endfor %}
+                
+                {% for SCENE in SCENES %}
+                    <div data-role="collapsible" data-inset="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u" data-iconpos="right">
+                        <h3>{{ SCENE.title }}</h3>
+                        <ul data-role="listview">
+                            <li><a href="{{ HOST }}/scene/{{ SCENE.storyid}}/{{ SCENE.id }}/"><p style="font-size: 1.2em; font-family: georgia, times, serif; line-height: 1.5em; font-weight: 400; white-space: pre-wrap;">{{ SCENE.description }}</p></a></li>
+                        </ul>
+                    </div>
+                {% endfor %}
+
+            </div>
+        {% else %}
+            <div role="main" class="ui-content" style="background: white; color: black;">
+
+                {% if CHART %}
+                    <div id="chartdiv" style="padding: 2%; border: solid; border-color: lightgray;"></div>
+                {% endif %}
+                
+                <div style="font-size: 1.2em; font-family: georgia, times, serif; line-height: 1.5em; font-weight: 400;">
+                    {% ifnotequal STORY.summary "" %}
+                        <p style="font-weight: bold;">Summary</p>
+                        <p style="white-space: pre-wrap;">{{ STORY.summary}}</p>
+                    {% endifnotequal %}
+
+                    {% for PLOT in PLOTS %}
+                        <p style="font-weight: bold;">{{ PLOT.title }}</p>
+                        <p style="white-space: pre-wrap;">{{ PLOT.description }}</p>
+                    {% endfor %}
+
+                    {% for SCENE in SCENES %}
+                        <p style="font-weight: bold;">{{ SCENE.title }}</p>
+                        <p style="white-space: pre-wrap;">{{ SCENE.description }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endifequal %}
+            
+		{% ifequal USER.user_id STORY.userid %}
+		    <a href="{{ HOST }}/scene/{{ STORY.id }}/" data-role="button" title="Add a new scene">Add scene</a>
+		    <a href="{{ HOST }}/plot/{{ STORY.id }}/" data-role="button" title="Add a new plot">Add plot</a>
+            <a href="{{ HOST }}/order/{{ STORY.id }}/" data-role="button" title="Change the order">Order</a>
+            <a href="{{ HOST }}/chart/{{ STORY.id }}/" data-role="button" title="Chart story">Chart</a>
+		{% endifequal %}
+        <a href="{{ HOST }}" data-role="button" title="Story Charts">Back</a>
+
+        {% if ADMIN %}
+            <form data-ajax="false" method="post" action="{{ HOST }}/create/">
+                <input type="hidden" name="storyID" value="{{ STORY.id }}">
+                <input type="hidden" name="makeprivate" value="makeprivate">
+                <input type="submit" value="Make Private">
+            </form>
+        {% endif %}
+	</div>
+
+    <script type="text/javascript">
+        var chartDrawn = false;
+        $(document).ready(function() {
+            if ((typeof google === 'undefined') || (typeof google.visualization === 'undefined')) {
+                google.charts.load('current', {packages: ['corechart']});
+                google.charts.setOnLoadCallback(drawChart);
+            }
+            function drawChart() {
+                chartDrawn = true;
+                var table = new google.visualization.DataTable();
+                
+                $.post( "{{ HOST }}/story/{{ STORY.id }}/", function( data ) {
+                    console.log( data );
+                    var plots = data['plots'];
+                    var scenes = data['scenes'];
+                    var tps = data['tps'];
+
+                    table.addColumn('string', 'scenes');
+                    for (i = 0; i < plots.length; i++) {
+                        table.addColumn('number', plots[i].title);
+                        table.addColumn({type: 'string', role: 'tooltip', 'p': {'html': true}});
+                    }
+
+                    table.addRows(scenes.length);
+
+                    var largest = 2;
+                    var current = [];
+                    for (j = 0; j < plots.length; j++) {
+                        current.push(0);
+                    }
+                    var tpindex = 0;
+                    var single = 1;
+                    var double = 2;
+                    var triple = 3;
+
+                    for (i = 0; i < scenes.length; i++) {
+                        for (j = 0; j < plots.length; j++) {
+                            var tpchoice = tps[tpindex];
+                            tpindex = tpindex + 1;
+                            if (tpchoice == "Increase") {
+                                current[j] = current[j] + single;
+                            } else if (tpchoice == "Accelerate") {
+                                if (current[j] > 0) {
+                                    current[j] = current[j] + double;
+                                } else {
+                                    current[j] = current[j] * -1 + double;
+                                }
+                            } else if (tpchoice == "Success") {
+                                if (current[j] > 0) {
+                                    current[j] = current[j] + triple;
+                                } else {
+                                    current[j] = current[j] * -1 + triple;
+                                }
+                            } else if (tpchoice == "Decrease") {
+                                current[j] = current[j] - single;
+                            } else if (tpchoice == "Decelerate") {
+                                if (current[j] < 0) {
+                                    current[j] = current[j] - double;
+                                } else {
+                                    current[j] = current[j] * -1 - double;
+                                }
+                            } else if (tpchoice == "Failure") {
+                                if (current[j] < 0) {
+                                    current[j] = current[j] - triple;
+                                } else {
+                                    current[j] = current[j] * -1 - triple;
+                                }
+                            }
+                            if (Math.abs(current[j]) > largest) {
+                                largest = Math.abs(current[j]);
+                            }
+                            if (tpchoice != "None") {
+                                table.setValue(i, 1 + j*2, current[j]);
+                                table.setValue(i, 1 + j*2 + 1, "<b>" + scenes[i]['title'] + "</b><br>" + plots[j]['title'] + " - " + tpchoice );
+                            }
+                        }
+                    }
+                    
+                    var options = { legend: { position: 'bottom' }, pointSize: 10, tooltip: {isHtml: true}, interpolateNulls: true, seriesType: 'line',
+                        chartArea: {'width': '100%', 'height': '90%'}, height: 500, hAxis: { textPosition: 'none' },
+                        vAxis: { viewWindow: { max: largest + 1, min: largest*-1 - 1 }, gridlines: { color: 'transparent' }, baselineColor: 'none' }
+                    }
+                    if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+                        options['height'] = 300;
+                    } else {
+                        options['height'] = 500;
+                    }
+                    
+                    var chart = new google.visualization.LineChart(document.getElementById('chartdiv'));
+                    chart.draw(table, options);
+                });
+            
+            }
+            if ((typeof google != 'undefined') && (typeof google.visualization != 'undefined') && !chartDrawn) {
+                drawChart();
+            }
+        });
+    </script>
+
+    {% endblock %}

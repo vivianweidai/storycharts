@@ -169,8 +169,16 @@ async function createStory(env, user, body) {
   const storyId = result.meta.last_row_id;
 
   // Auto-populate with 3 default plots and 3 scenes
-  const plotNames = ['Internal', 'Relationship', 'External'];
-  const sceneNames = ['Scene 1', 'Scene 2', 'Scene 3'];
+  const plotTemplates = [
+    { title: 'Internal', description: 'The protagonist\'s inner journey — fears, doubts, growth, and self-discovery.' },
+    { title: 'Relationship', description: 'How key relationships evolve — trust, conflict, bonding, and betrayal.' },
+    { title: 'External', description: 'The outer conflict — obstacles, antagonists, and the main goal.' }
+  ];
+  const sceneTemplates = [
+    { title: 'Beginning', description: 'Establish the world, characters, and stakes. The inciting incident sets things in motion.' },
+    { title: 'Middle', description: 'Rising tension and complications. Characters are tested and alliances shift.' },
+    { title: 'End', description: 'The climax and resolution. Conflicts converge and the story reaches its turning point.' }
+  ];
 
   const plotInsert = env.DB.prepare(
     'INSERT INTO plots (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)'
@@ -181,15 +189,15 @@ async function createStory(env, user, body) {
 
   // Create plots
   const plotResults = [];
-  for (let i = 0; i < plotNames.length; i++) {
-    const r = await plotInsert.bind(storyId, plotNames[i], '', i + 1).run();
+  for (let i = 0; i < plotTemplates.length; i++) {
+    const r = await plotInsert.bind(storyId, plotTemplates[i].title, plotTemplates[i].description, i + 1).run();
     plotResults.push(r.meta.last_row_id);
   }
 
   // Create scenes
   const sceneResults = [];
-  for (let i = 0; i < sceneNames.length; i++) {
-    const r = await sceneInsert.bind(storyId, sceneNames[i], '', i + 1).run();
+  for (let i = 0; i < sceneTemplates.length; i++) {
+    const r = await sceneInsert.bind(storyId, sceneTemplates[i].title, sceneTemplates[i].description, i + 1).run();
     sceneResults.push(r.meta.last_row_id);
   }
 

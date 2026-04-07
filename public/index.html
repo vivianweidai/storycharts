@@ -50,15 +50,21 @@
 
       const createBtn = document.getElementById('create-btn');
       if (createBtn) {
-        createBtn.onclick = () => {
-          showModal('New Story', [
-            { name: 'title', label: 'Title', type: 'text' },
-            { name: 'summary', label: 'Summary', type: 'textarea' },
-            { name: 'private', label: 'Visibility', type: 'checkbox', checkLabel: 'Private', value: true }
-          ], async (data) => {
-            const result = await api('POST', 'stories', data);
+        createBtn.onclick = async () => {
+          createBtn.disabled = true;
+          createBtn.textContent = 'Creating...';
+          try {
+            const result = await api('POST', 'stories', {
+              title: 'My Story',
+              summary: 'A story about...',
+              private: true
+            });
             window.location.href = '/story.html?id=' + result.id;
-          });
+          } catch (e) {
+            alert('Failed to create story: ' + e.message);
+            createBtn.disabled = false;
+            createBtn.textContent = 'Create Story';
+          }
         };
       }
     })();

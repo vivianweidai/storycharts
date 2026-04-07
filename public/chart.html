@@ -2,116 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Edit Chart — Story Charts</title>
-  <link rel="stylesheet" href="/app.css">
-  <link rel="icon" href="/favicon/favicon.ico">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@latest/dist/chartjs-plugin-dragdata.min.js"></script>
-</head>
-<body>
-  <div class="header" id="header"></div>
-  <div id="back-link"></div>
-  <div id="content"><p class="empty">Loading...</p></div>
-
-  <script src="/app.js"></script>
+  <title>Redirecting...</title>
   <script>
-    let chartInstance = null;
-    let storyData = null;
-
-    (async function() {
-      const user = await getUser();
-      renderHeader(user);
-
-      const id = new URLSearchParams(location.search).get('id');
-      if (!id) { location.href = '/'; return; }
-
-      document.getElementById('back-link').innerHTML = '<a class="back" href="/story.html?id=' + id + '">&larr; Back to Story</a>';
-
-      try {
-        storyData = await api('GET', 'stories/' + id);
-      } catch (e) {
-        document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>';
-        return;
-      }
-
-      if (!storyData.isOwner) {
-        document.getElementById('content').innerHTML = '<p class="empty">You can only edit your own stories.</p>';
-        return;
-      }
-
-      renderEditor(storyData);
-    })();
-
-    function renderEditor(data) {
-      const { story, plots, scenes, turningPoints } = data;
-      const content = document.getElementById('content');
-
-      if (!plots.length || !scenes.length) {
-        content.innerHTML = '<p class="empty">Add at least one plot and one scene before editing the chart.</p>';
-        return;
-      }
-
-      let html = '<h1>Chart: ' + (story.title || 'Untitled') + '</h1>';
-      html += '<p class="drag-hint">Drag points up or down to change turning points</p>';
-
-      // Draggable chart
-      html += '<div class="chart-container" id="chart-editor" style="height:400px"></div>';
-
-      // TP type legend
-      html += '<div class="tp-legend">';
-      html += '<div class="tp-legend-title">Turning Point Types</div>';
-      html += '<div class="tp-legend-items">';
-      html += '<span class="tp-tag tp-up">Success +3</span>';
-      html += '<span class="tp-tag tp-up">Accelerate +2</span>';
-      html += '<span class="tp-tag tp-up">Increase +1</span>';
-      html += '<span class="tp-tag tp-none">None 0</span>';
-      html += '<span class="tp-tag tp-down">Decrease -1</span>';
-      html += '<span class="tp-tag tp-down">Decelerate -2</span>';
-      html += '<span class="tp-tag tp-down">Failure -3</span>';
-      html += '</div></div>';
-
-      // Actions
-      html += '<div class="actions">';
-      html += '<button class="btn btn-primary" onclick="saveChart()">Save Chart</button>';
-      html += '<a class="btn" href="/story.html?id=' + story.id + '">Cancel</a>';
-      if (turningPoints.length) {
-        html += '<button class="btn btn-danger" onclick="clearChart()" style="margin-left:auto">Clear Chart</button>';
-      }
-      html += '</div>';
-
-      content.innerHTML = html;
-
-      // Render draggable chart
-      chartInstance = renderDraggableChart(
-        document.getElementById('chart-editor'),
-        plots, scenes, turningPoints
-      );
-    }
-
-    async function saveChart() {
-      if (!chartInstance || !chartInstance._tpMap) return;
-      const tpMap = chartInstance._tpMap;
-      const tps = [];
-      for (const plot of storyData.plots) {
-        for (const scene of storyData.scenes) {
-          const key = plot.id + '-' + scene.id;
-          tps.push({
-            plot_id: plot.id,
-            scene_id: scene.id,
-            tp_type: tpMap[key] || 'None'
-          });
-        }
-      }
-      await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
-      location.href = '/story.html?id=' + storyData.story.id;
-    }
-
-    async function clearChart() {
-      if (!confirm('Delete all chart data for this story?')) return;
-      await api('DELETE', 'stories/' + storyData.story.id + '/turningpoints');
-      location.href = '/story.html?id=' + storyData.story.id;
-    }
+    // chart.html is now merged into story.html
+    const id = new URLSearchParams(location.search).get('id');
+    location.replace(id ? '/story.html?id=' + id : '/');
   </script>
-</body>
+</head>
+<body><p>Redirecting...</p></body>
 </html>

@@ -214,6 +214,17 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
     ds.pointStyle = 'circle';
   }
 
+  // Compute stable Y-axis bounds: find current min/max, pad by ±3 (max single TP delta)
+  let yMin = 0, yMax = 0;
+  for (const ds of chartData.datasets) {
+    for (const v of ds.data) {
+      if (v < yMin) yMin = v;
+      if (v > yMax) yMax = v;
+    }
+  }
+  yMin = Math.min(yMin - 4, -4);
+  yMax = Math.max(yMax + 4, 4);
+
   const chart = new Chart(canvas, {
     type: 'line',
     data: chartData,
@@ -240,24 +251,19 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
           dragX: false,
           dragY: true,
           onDrag: function(e, datasetIndex, index, value) {
-            // Compute previous accumulated value for snapping
             const plot = plots[datasetIndex];
             let prevValue = 0;
             if (index > 0) {
               prevValue = chart.data.datasets[datasetIndex].data[index - 1];
             }
             const snap = snapToNearest(value, prevValue);
-            // Update tpMap
             const key = plot.id + '-' + scenes[index].id;
             tpMap[key] = snap.tpType;
-            // Recompute this plot's data from this point onward
             const newData = recomputeFromIndex(datasetIndex, index, plots, scenes, tpMap);
             chart.data.datasets[datasetIndex].data = newData;
-            // Return the snapped value for the dragged point
             return snap.value;
           },
           onDragEnd: function(e, datasetIndex, index, value) {
-            // Final snap
             const plot = plots[datasetIndex];
             let prevValue = 0;
             if (index > 0) {
@@ -276,6 +282,9 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       scales: {
         x: { title: { display: true, text: 'Scenes' } },
         y: {
+          min: yMin,
+          max: yMax,
+          ticks: { stepSize: 1 },
           title: { display: true, text: 'Plot Progression' },
           grid: { color: '#f0f0f0' }
         }

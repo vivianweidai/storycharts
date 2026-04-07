@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="icon" href="/favicon/favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@latest/dist/chartjs-plugin-dragdata.min.js"></script>
 </head>
 <body>
   <div class="header" id="header"></div>
@@ -16,6 +17,7 @@
   <script src="/app.js"></script>
   <script>
     let storyData = null;
+    let chartInstance = null;
 
     (async function() {
       const user = await getUser();
@@ -39,38 +41,61 @@
       const content = document.getElementById('content');
       let html = '';
 
-      // Title
-      html += '<h1>' + (story.title || 'Untitled');
-      if (story.private) html += ' <span class="badge badge-private">private</span>';
-      html += '</h1>';
+      // Title row with edit/delete
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
+      if (story.private) html += '<span class="badge badge-private">private</span>';
+      if (isOwner) {
+        html += '<button class="btn btn-sm" onclick="editStory()">edit</button>';
+        html += '<button class="btn btn-sm btn-danger" onclick="deleteStory()">delete</button>';
+      }
+      html += '</div>';
 
-      // Chart
-      if (turningPoints.length) {
-        html += '<div class="chart-container" id="chart-box" style="height:300px"></div>';
+      // Summary
+      if (story.summary) {
+        html += '<p style="font-size:0.9em;color:#444;margin:8px 0">' + story.summary + '</p>';
       }
 
-      // Owner actions
+      // Chart area — always present
+      html += '<div class="chart-container" id="chart-area" style="height:400px;margin:16px 0">';
+      if (!plots.length && !scenes.length) {
+        html += '<p class="empty">Add plots and scenes to build your chart.</p>';
+      }
+      html += '</div>';
+
+      // Action buttons below chart
       if (isOwner) {
         html += '<div class="actions">';
-        html += '<button class="btn" onclick="editStory()">Edit Story</button>';
-        html += '<button class="btn" onclick="addPlot()">Add Plot</button>';
-        html += '<button class="btn" onclick="addScene()">Add Scene</button>';
+        html += '<button class="btn btn-primary" onclick="addPlot()">Add Plot</button>';
+        html += '<button class="btn btn-primary" onclick="addScene()">Add Scene</button>';
         if (plots.length && scenes.length) {
-          html += '<a class="btn" href="/chart.html?id=' + story.id + '">Edit Chart</a>';
+          html += '<button class="btn" onclick="saveChart()">Save Chart</button>';
+        }
+        if (turningPoints.length) {
+          html += '<button class="btn btn-danger" onclick="clearChart()">Clear Chart</button>';
         }
         if (plots.length > 1 || scenes.length > 1) {
           html += '<button class="btn" onclick="showOrder()">Reorder</button>';
         }
-        html += '<button class="btn btn-danger" onclick="deleteStory()">Delete</button>';
         html += '</div>';
       }
 
-      // Summary
-      if (story.summary) {
-        html += '<h2>Summary</h2><p style="font-size:0.9em;color:#444">' + story.summary + '</p>';
+      // TP legend
+      if (plots.length && scenes.length) {
+        html += '<div class="tp-legend">';
+        html += '<div class="tp-legend-title">Turning Point Types (drag points to change)</div>';
+        html += '<div class="tp-legend-items">';
+        html += '<span class="tp-tag tp-up">Success +3</span>';
+        html += '<span class="tp-tag tp-up">Accelerate +2</span>';
+        html += '<span class="tp-tag tp-up">Increase +1</span>';
+        html += '<span class="tp-tag tp-none">None 0</span>';
+        html += '<span class="tp-tag tp-down">Decrease -1</span>';
+        html += '<span class="tp-tag tp-down">Decelerate -2</span>';
+        html += '<span class="tp-tag tp-down">Failure -3</span>';
+        html += '</div></div>';
       }
 
-      // Plots
+      // Plots list
       if (plots.length) {
         html += '<h2>Plots</h2>';
         for (const p of plots) {
@@ -80,7 +105,7 @@
         }
       }
 
-      // Scenes
+      // Scenes list
       if (scenes.length) {
         html += '<h2>Scenes</h2>';
         for (const s of scenes) {
@@ -92,10 +117,39 @@
 
       content.innerHTML = html;
 
-      // Render chart
-      if (turningPoints.length) {
-        renderChart(document.getElementById('chart-box'), plots, scenes, turningPoints);
+      // Render the draggable chart if we have plots and scenes
+      if (plots.length && scenes.length) {
+        chartInstance = renderDraggableChart(
+          document.getElementById('chart-area'),
+          plots, scenes, turningPoints
+        );
       }
+    }
+
+    // --- Chart save/clear ---
+
+    async function saveChart() {
+      if (!chartInstance || !chartInstance._tpMap) return;
+      const tpMap = chartInstance._tpMap;
+      const tps = [];
+      for (const plot of storyData.plots) {
+        for (const scene of storyData.scenes) {
+          const key = plot.id + '-' + scene.id;
+          tps.push({
+            plot_id: plot.id,
+            scene_id: scene.id,
+            tp_type: tpMap[key] || 'None'
+          });
+        }
+      }
+      await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
+      location.reload();
+    }
+
+    async function clearChart() {
+      if (!confirm('Delete all chart data for this story?')) return;
+      await api('DELETE', 'stories/' + storyData.story.id + '/turningpoints');
+      location.reload();
     }
 
     // --- Story CRUD ---

@@ -123,7 +123,7 @@ function renderChart(container, plots, scenes, turningPoints) {
         }
       },
       scales: {
-        x: { title: { display: true, text: 'Scenes' } },
+        x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: { ticks: { display: false }, title: { display: false }, grid: { color: '#f0f0f0' }, border: { display: false } }
       }
     }
@@ -281,7 +281,7 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
         }
       },
       scales: {
-        x: { title: { display: true, text: 'Scenes' } },
+        x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
           min: yMin,
           max: yMax,

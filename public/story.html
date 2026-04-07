@@ -57,19 +57,10 @@
       }
       html += '</div>';
 
-      // Summary below chart
-      if (story.summary) {
-        html += '<p style="font-size:0.9em;color:#444;margin:8px 0">' + story.summary + '</p>';
-      }
-
-      // Action buttons below chart
-      if (isOwner) {
+      // Chart action buttons
+      if (isOwner && plots.length && scenes.length) {
         html += '<div class="actions">';
-        html += '<button class="btn btn-primary" onclick="addPlot()">Add Plot</button>';
-        html += '<button class="btn btn-primary" onclick="addScene()">Add Scene</button>';
-        if (plots.length && scenes.length) {
-          html += '<button class="btn" onclick="saveChart()">Save Chart</button>';
-        }
+        html += '<button class="btn" onclick="saveChart()">Save Chart</button>';
         if (turningPoints.length) {
           html += '<button class="btn btn-danger" onclick="clearChart()">Clear Chart</button>';
         }
@@ -94,24 +85,41 @@
         html += '</div></div>';
       }
 
-      // Plots list
+      // Summary section with inline edit
+      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      html += '<h2 style="margin:0">Summary</h2>';
+      if (isOwner) html += '<button class="btn btn-sm" onclick="editSummary()">edit</button>';
+      html += '</div>';
+      html += '<p style="font-size:0.9em;color:#444;margin:0 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
+
+      // Plots section with inline Add Plot button
+      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      html += '<h2 style="margin:0">Plots</h2>';
+      if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addPlot()">+ Add</button>';
+      html += '</div>';
       if (plots.length) {
-        html += '<h2>Plots</h2>';
         for (const p of plots) {
-          html += '<details><summary>' + (p.title || 'Untitled Plot');
+          html += '<details open><summary>' + (p.title || 'Untitled Plot');
           if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
         }
+      } else {
+        html += '<p class="empty" style="padding:12px 0">No plots yet.</p>';
       }
 
-      // Scenes list
+      // Scenes section with inline Add Scene button
+      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      html += '<h2 style="margin:0">Scenes</h2>';
+      if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addScene()">+ Add</button>';
+      html += '</div>';
       if (scenes.length) {
-        html += '<h2>Scenes</h2>';
         for (const s of scenes) {
-          html += '<details><summary>' + (s.title || 'Untitled Scene');
+          html += '<details open><summary>' + (s.title || 'Untitled Scene');
           if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
         }
+      } else {
+        html += '<p class="empty" style="padding:12px 0">No scenes yet.</p>';
       }
 
       content.innerHTML = html;
@@ -157,10 +165,19 @@
       const s = storyData.story;
       showModal('Edit Story', [
         { name: 'title', label: 'Title', type: 'text', value: s.title },
-        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary },
         { name: 'private', label: 'Visibility', type: 'checkbox', checkLabel: 'Private', value: s.private }
       ], async (data) => {
-        await api('PUT', 'stories/' + s.id, data);
+        await api('PUT', 'stories/' + s.id, { ...data, summary: s.summary });
+        location.reload();
+      });
+    }
+
+    function editSummary() {
+      const s = storyData.story;
+      showModal('Edit Summary', [
+        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary }
+      ], async (data) => {
+        await api('PUT', 'stories/' + s.id, { title: s.title, private: s.private, summary: data.summary });
         location.reload();
       });
     }

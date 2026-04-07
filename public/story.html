@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Story Charts</title>
   <link rel="stylesheet" href="/app.css">
   <link rel="icon" href="/favicon/favicon.ico">
@@ -220,11 +220,11 @@
     // --- Touch + mouse drag reorder ---
 
     function initDragReorder() {
-      for (const table of document.querySelectorAll('.drag-table')) {
+      document.querySelectorAll('.drag-table').forEach(table => {
         const tbody = table.querySelector('tbody');
         let dragRow = null;
-        let startY = 0;
-        let placeholder = null;
+        let clone = null;
+        let offsetY = 0;
 
         function getY(e) {
           return e.touches ? e.touches[0].clientY : e.clientY;
@@ -235,14 +235,30 @@
           if (!handle) return;
           e.preventDefault();
           dragRow = handle.closest('.drag-row');
-          startY = getY(e);
-          dragRow.classList.add('dragging');
+          const rect = dragRow.getBoundingClientRect();
+          offsetY = getY(e) - rect.top;
+
+          // Create floating clone
+          clone = dragRow.cloneNode(true);
+          clone.classList.add('drag-clone');
+          clone.style.width = rect.width + 'px';
+          clone.style.top = rect.top + 'px';
+          clone.style.left = rect.left + 'px';
+          document.body.appendChild(clone);
+
+          // Ghost the original
+          dragRow.classList.add('drag-ghost');
         }
 
         function onMove(e) {
-          if (!dragRow) return;
+          if (!dragRow || !clone) return;
           e.preventDefault();
           const y = getY(e);
+
+          // Move clone with finger
+          clone.style.top = (y - offsetY) + 'px';
+
+          // Swap rows based on finger position
           const rows = [...tbody.querySelectorAll('.drag-row')];
           for (const row of rows) {
             if (row === dragRow) continue;
@@ -260,7 +276,8 @@
 
         function onEnd() {
           if (!dragRow) return;
-          dragRow.classList.remove('dragging');
+          dragRow.classList.remove('drag-ghost');
+          if (clone) { clone.remove(); clone = null; }
           dragRow = null;
           saveOrder();
         }
@@ -271,7 +288,7 @@
         document.addEventListener('touchmove', onMove, { passive: false });
         document.addEventListener('mouseup', onEnd);
         document.addEventListener('touchend', onEnd);
-      }
+      });
     }
 
     async function saveOrder() {

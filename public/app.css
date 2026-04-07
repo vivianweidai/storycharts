@@ -95,7 +95,7 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
   padding: 6px 10px;
   border: 1px solid #d1d9e0;
   border-radius: 6px;
-  font-size: 0.9em;
+  font-size: 16px;
   font-family: inherit;
 }
 .form-group textarea { min-height: 60px; resize: vertical; }
@@ -142,22 +142,26 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
   margin: 4px 0;
 }
 .drag-row td {
-  padding: 8px 6px;
-  vertical-align: top;
+  padding: 10px 6px;
+  vertical-align: middle;
   border-bottom: 1px solid #f0f0f0;
 }
 .drag-row:last-child td { border-bottom: none; }
-.drag-row.dragging { opacity: 0.3; }
-.drag-handle-cell { width: 20px; }
+.drag-row.drag-ghost {
+  opacity: 0.2;
+  background: #ddf4ff;
+}
+.drag-handle-cell { width: 28px; }
 .drag-handle {
   cursor: grab;
-  color: #c8c8c8;
-  font-size: 1em;
+  color: #b0b0b0;
+  font-size: 1.3em;
   user-select: none;
   letter-spacing: -3px;
   touch-action: none;
+  padding: 4px 2px;
 }
-.drag-handle:hover { color: #656d76; }
+.drag-handle:active { color: #0969da; }
 .drag-title {
   font-weight: 600;
   font-size: 0.95em;
@@ -168,6 +172,17 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
   color: #656d76;
 }
 .drag-actions { width: 1%; white-space: nowrap; }
+
+/* Floating drag clone */
+.drag-clone {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  border-radius: 6px;
+  opacity: 0.9;
+}
 
 /* Back link */
 .back { font-size: 0.85em; margin-bottom: 12px; display: inline-block; }

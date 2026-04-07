@@ -130,11 +130,13 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
         dragData: {
           dragX: false,
           dragY: true,
+          round: 0,
           onDrag: function(e, datasetIndex, index, value) {
             const snapped = snapValue(value);
             const key = plots[datasetIndex].id + '-' + scenes[index].id;
             tpMap[key] = snapped;
             chart.data.datasets[datasetIndex].data[index] = snapped;
+            chart.update('none');
             return snapped;
           },
           onDragEnd: function(e, datasetIndex, index, value) {
@@ -150,8 +152,8 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       scales: {
         x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
-          min: -11,
-          max: 11,
+          min: -10,
+          max: 10,
           ticks: { display: false, count: 11 },
           title: { display: false },
           grid: { color: '#e8e8e8' },

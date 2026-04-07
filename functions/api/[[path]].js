@@ -201,24 +201,22 @@ async function createStory(env, user, body) {
     sceneResults.push(r.meta.last_row_id);
   }
 
-  // Generate random escalating turning points
-  // Scene 1: small moves (Increase/Decrease), Scene 2: medium (Accelerate/Decelerate),
-  // Scene 3: big (Success/Failure)
-  const tpTiers = [
-    ['Increase', 'Decrease'],
-    ['Increase', 'Decrease', 'Accelerate', 'Decelerate'],
-    ['Accelerate', 'Decelerate', 'Success', 'Failure']
+  // Generate template turning point values (1-20 scale)
+  // Each plot gets a distinct arc shape
+  const tpArcs = [
+    [8, 14, 18],   // Internal: steady rise
+    [12, 6, 16],   // Relationship: dip then rise
+    [14, 10, 8]    // External: gradual decline
   ];
 
   const tpInsert = env.DB.prepare(
     'INSERT INTO turning_points (story_id, plot_id, scene_id, tp_type) VALUES (?, ?, ?, ?)'
   );
   const batch = [];
-  for (const plotId of plotResults) {
+  for (let pi = 0; pi < plotResults.length; pi++) {
     for (let si = 0; si < sceneResults.length; si++) {
-      const tier = tpTiers[si];
-      const tpType = tier[Math.floor(Math.random() * tier.length)];
-      batch.push(tpInsert.bind(storyId, plotId, sceneResults[si], tpType));
+      const value = tpArcs[pi] ? tpArcs[pi][si] : 10;
+      batch.push(tpInsert.bind(storyId, plotResults[pi], sceneResults[si], String(value)));
     }
   }
   if (batch.length) await env.DB.batch(batch);
@@ -337,9 +335,7 @@ async function saveTurningPoints(env, user, storyId, body) {
   );
   const batch = [delStmt];
   for (const tp of (body.turningPoints || [])) {
-    if (tp.tp_type && tp.tp_type !== 'None') {
-      batch.push(insStmt.bind(storyId, tp.plot_id, tp.scene_id, tp.tp_type));
-    }
+    batch.push(insStmt.bind(storyId, tp.plot_id, tp.scene_id, String(tp.tp_type || '10')));
   }
   await env.DB.batch(batch);
   return json({ ok: true });

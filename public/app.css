@@ -174,44 +174,11 @@ details .detail-body { padding: 8px 0 8px 12px; font-size: 0.9em; color: #444; }
 .sort-item .sort-btns button:hover { background: #ddf4ff; }
 .sort-item .sort-label { flex: 1; }
 
-/* Chart grid (turning point editor) */
-.tp-grid { width: 100%; border-collapse: collapse; margin: 12px 0; }
-.tp-grid th, .tp-grid td {
-  border: 1px solid #d1d9e0;
-  padding: 6px 8px;
-  text-align: center;
-  font-size: 0.8em;
-}
-.tp-grid th { background: #f6f8fa; font-weight: 600; }
-.tp-grid select { padding: 2px 4px; font-size: 0.85em; border-radius: 4px; border: 1px solid #d1d9e0; }
-
 /* Chart container */
 .chart-container { margin: 16px 0; }
 
 /* Empty state */
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }
-
-/* Draggable chart editor */
-.drag-hint { font-size: 0.85em; color: #656d76; margin-bottom: 8px; }
-
-.tp-legend {
-  margin: 16px 0;
-  padding: 12px 16px;
-  background: #f6f8fa;
-  border-radius: 8px;
-  border: 1px solid #d1d9e0;
-}
-.tp-legend-title { font-size: 0.8em; font-weight: 600; color: #656d76; margin-bottom: 8px; }
-.tp-legend-items { display: flex; flex-wrap: wrap; gap: 6px; }
-.tp-tag {
-  font-size: 0.75em;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-.tp-up { background: #dafbe1; color: #1a7f37; }
-.tp-down { background: #ffebe9; color: #cf222e; }
-.tp-none { background: #eaeef2; color: #656d76; }
 
 /* Drag-and-drop reorder */
 .drag-list { }

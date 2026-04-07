@@ -25,7 +25,10 @@ async function getUser() {
 
 // --- Chart rendering ---
 
-const TP_TYPES = ['None', 'Increase', 'Accelerate', 'Success', 'Decrease', 'Decelerate', 'Failure'];
+// 20 discrete values: 1 through 20
+const TP_MIN = 1;
+const TP_MAX = 20;
+const TP_DEFAULT = 10;
 
 // Light pastel colors — science repo preferred palette
 const PLOT_COLORS = [
@@ -33,40 +36,16 @@ const PLOT_COLORS = [
   '#f7e59a', '#c4c4c4', '#f4a6a0', '#a1c9f4', '#b0d9a0'
 ];
 
-// Replicate the legacy TP accumulation logic from Story.html
 function computeChartData(plots, scenes, turningPoints) {
   const tpMap = {};
   for (const tp of turningPoints) {
-    tpMap[tp.plot_id + '-' + tp.scene_id] = tp.tp_type;
+    tpMap[tp.plot_id + '-' + tp.scene_id] = parseInt(tp.tp_type) || TP_DEFAULT;
   }
 
   const datasets = plots.map((plot, pi) => {
-    let value = 0;
     const data = scenes.map(scene => {
-      const tpType = tpMap[plot.id + '-' + scene.id] || 'None';
-      if (tpType === 'None') return value;
-
-      switch (tpType) {
-        case 'Increase': value += 1; break;
-        case 'Decrease': value -= 1; break;
-        case 'Accelerate':
-          if (value < 0) value = -value;
-          value += 2;
-          break;
-        case 'Decelerate':
-          if (value > 0) value = -value;
-          value -= 2;
-          break;
-        case 'Success':
-          if (value < 0) value = -value;
-          value += 3;
-          break;
-        case 'Failure':
-          if (value > 0) value = -value;
-          value -= 3;
-          break;
-      }
-      return value;
+      const key = plot.id + '-' + scene.id;
+      return tpMap[key] !== undefined ? tpMap[key] : TP_DEFAULT;
     });
 
     return {
@@ -87,123 +66,9 @@ function computeChartData(plots, scenes, turningPoints) {
   };
 }
 
-function renderChart(container, plots, scenes, turningPoints) {
-  if (!plots.length || !scenes.length) {
-    container.innerHTML = '<p class="empty">Add plots and scenes to see the chart.</p>';
-    return null;
-  }
-
-  // Clear container and create canvas
-  container.innerHTML = '';
-  const canvas = document.createElement('canvas');
-  canvas.height = 300;
-  container.appendChild(canvas);
-
-  const chartData = computeChartData(plots, scenes, turningPoints);
-
-  return new Chart(canvas, {
-    type: 'line',
-    data: chartData,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            font: { size: 12, weight: '600' },
-            boxWidth: 0,
-            boxHeight: 0,
-            padding: 16,
-            generateLabels: function(chart) {
-              return chart.data.datasets.map((ds, i) => ({
-                text: ds.label,
-                fontColor: PLOT_COLORS[i % PLOT_COLORS.length],
-                fillStyle: 'transparent',
-                strokeStyle: 'transparent',
-                lineWidth: 0,
-                hidden: !chart.isDatasetVisible(i),
-                datasetIndex: i
-              }));
-            }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (items) => items[0].label,
-            label: (item) => {
-              const plot = plots[item.datasetIndex];
-              const scene = scenes[item.dataIndex];
-              const tpType = getTpType(plot.id, scene.id, turningPoints);
-              return (plot.title || 'Plot') + ': ' + tpType + ' (' + item.formattedValue + ')';
-            }
-          }
-        }
-      },
-      scales: {
-        x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
-        y: { ticks: { display: false, count: 11 }, title: { display: false }, grid: { color: '#e8e8e8' }, border: { display: false } }
-      }
-    }
-  });
-}
-
-function getTpType(plotId, sceneId, turningPoints) {
-  const tp = turningPoints.find(t => t.plot_id == plotId && t.scene_id == sceneId);
-  return tp ? tp.tp_type : 'None';
-}
-
-// --- Snap logic for draggable chart ---
-
-// Given previous accumulated value, return all 7 possible {tpType, resultValue} options
-function computeSnapTargets(prevValue) {
-  const targets = [];
-  for (const tpType of TP_TYPES) {
-    let v = prevValue;
-    switch (tpType) {
-      case 'None': break;
-      case 'Increase': v += 1; break;
-      case 'Decrease': v -= 1; break;
-      case 'Accelerate': if (v < 0) v = -v; v += 2; break;
-      case 'Decelerate': if (v > 0) v = -v; v -= 2; break;
-      case 'Success': if (v < 0) v = -v; v += 3; break;
-      case 'Failure': if (v > 0) v = -v; v -= 3; break;
-    }
-    targets.push({ tpType, value: v });
-  }
-  return targets;
-}
-
-// Snap a dragged Y value to the nearest valid TP target
-function snapToNearest(draggedY, prevValue) {
-  const targets = computeSnapTargets(prevValue);
-  let best = targets[0];
-  for (const t of targets) {
-    if (Math.abs(t.value - draggedY) < Math.abs(best.value - draggedY)) best = t;
-  }
-  return best;
-}
-
-// Recompute accumulated values for one plot from a given scene index onward
-function recomputeFromIndex(plotIndex, fromSceneIndex, plots, scenes, tpMap) {
-  const plot = plots[plotIndex];
-  const data = [];
-  let value = 0;
-  for (let si = 0; si < scenes.length; si++) {
-    const key = plot.id + '-' + scenes[si].id;
-    const tpType = tpMap[key] || 'None';
-    switch (tpType) {
-      case 'Increase': value += 1; break;
-      case 'Decrease': value -= 1; break;
-      case 'Accelerate': if (value < 0) value = -value; value += 2; break;
-      case 'Decelerate': if (value > 0) value = -value; value -= 2; break;
-      case 'Success': if (value < 0) value = -value; value += 3; break;
-      case 'Failure': if (value > 0) value = -value; value -= 3; break;
-    }
-    data.push(value);
-  }
-  return data;
+// Snap a dragged Y value to the nearest discrete step (1-20)
+function snapValue(y) {
+  return Math.max(TP_MIN, Math.min(TP_MAX, Math.round(y)));
 }
 
 // Build a draggable chart for the editor
@@ -213,10 +78,17 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
     return null;
   }
 
-  // Build mutable TP map: "plotId-sceneId" → tpType
+  // Build mutable TP map: "plotId-sceneId" → integer value
   const tpMap = {};
   for (const tp of turningPoints) {
-    tpMap[tp.plot_id + '-' + tp.scene_id] = tp.tp_type;
+    tpMap[tp.plot_id + '-' + tp.scene_id] = parseInt(tp.tp_type) || TP_DEFAULT;
+  }
+  // Fill defaults for any missing combinations
+  for (const plot of plots) {
+    for (const scene of scenes) {
+      const key = plot.id + '-' + scene.id;
+      if (tpMap[key] === undefined) tpMap[key] = TP_DEFAULT;
+    }
   }
 
   container.innerHTML = '';
@@ -234,17 +106,6 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
     ds.pointStyle = 'circle';
   }
 
-  // Compute stable Y-axis bounds: find current min/max, pad by ±3 (max single TP delta)
-  let yMin = 0, yMax = 0;
-  for (const ds of chartData.datasets) {
-    for (const v of ds.data) {
-      if (v < yMin) yMin = v;
-      if (v > yMax) yMax = v;
-    }
-  }
-  yMin = Math.min(yMin - 4, -4);
-  yMax = Math.max(yMax + 4, 4);
-
   const chart = new Chart(canvas, {
     type: 'line',
     data: chartData,
@@ -254,69 +115,28 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       animation: { duration: 150 },
       interaction: { mode: 'nearest', intersect: true },
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            font: { size: 13, weight: '600' },
-            usePointStyle: false,
-            boxWidth: 0,
-            boxHeight: 0,
-            padding: 16,
-            color: function(context) {
-              return PLOT_COLORS[context.datasetIndex % PLOT_COLORS.length];
-            },
-            generateLabels: function(chart) {
-              return chart.data.datasets.map((ds, i) => ({
-                text: ds.label,
-                fontColor: PLOT_COLORS[i % PLOT_COLORS.length],
-                fillStyle: 'transparent',
-                strokeStyle: 'transparent',
-                lineWidth: 0,
-                hidden: !chart.isDatasetVisible(i),
-                datasetIndex: i
-              }));
-            }
-          }
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             title: (items) => items[0].label,
-            label: (item) => {
-              const plot = plots[item.datasetIndex];
-              const scene = scenes[item.dataIndex];
-              const key = plot.id + '-' + scene.id;
-              const tpType = tpMap[key] || 'None';
-              return (plot.title || 'Plot') + ': ' + tpType + ' (' + item.formattedValue + ')';
-            }
+            label: (item) => (plots[item.datasetIndex].title || 'Plot') + ': ' + item.formattedValue
           }
         },
         dragData: {
           dragX: false,
           dragY: true,
           onDrag: function(e, datasetIndex, index, value) {
-            const plot = plots[datasetIndex];
-            let prevValue = 0;
-            if (index > 0) {
-              prevValue = chart.data.datasets[datasetIndex].data[index - 1];
-            }
-            const snap = snapToNearest(value, prevValue);
-            const key = plot.id + '-' + scenes[index].id;
-            tpMap[key] = snap.tpType;
-            const newData = recomputeFromIndex(datasetIndex, index, plots, scenes, tpMap);
-            chart.data.datasets[datasetIndex].data = newData;
-            return snap.value;
+            const snapped = snapValue(value);
+            const key = plots[datasetIndex].id + '-' + scenes[index].id;
+            tpMap[key] = snapped;
+            chart.data.datasets[datasetIndex].data[index] = snapped;
+            return snapped;
           },
           onDragEnd: function(e, datasetIndex, index, value) {
-            const plot = plots[datasetIndex];
-            let prevValue = 0;
-            if (index > 0) {
-              prevValue = chart.data.datasets[datasetIndex].data[index - 1];
-            }
-            const snap = snapToNearest(value, prevValue);
-            const key = plot.id + '-' + scenes[index].id;
-            tpMap[key] = snap.tpType;
-            const newData = recomputeFromIndex(datasetIndex, index, plots, scenes, tpMap);
-            chart.data.datasets[datasetIndex].data = newData;
+            const snapped = snapValue(value);
+            const key = plots[datasetIndex].id + '-' + scenes[index].id;
+            tpMap[key] = snapped;
+            chart.data.datasets[datasetIndex].data[index] = snapped;
             chart.update('none');
             if (onChange) onChange(tpMap);
           }
@@ -325,8 +145,8 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       scales: {
         x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
-          min: yMin,
-          max: yMax,
+          min: 0,
+          max: 21,
           ticks: { display: false, count: 11 },
           title: { display: false },
           grid: { color: '#e8e8e8' },
@@ -336,7 +156,6 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
     }
   });
 
-  // Store tpMap on the chart for external access
   chart._tpMap = tpMap;
   return chart;
 }

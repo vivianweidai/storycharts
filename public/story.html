@@ -134,7 +134,7 @@
           tps.push({
             plot_id: plot.id,
             scene_id: scene.id,
-            tp_type: tpMap[key] || 'None'
+            tp_type: String(tpMap[key] || 10)
           });
         }
       }

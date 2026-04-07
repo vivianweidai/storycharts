@@ -27,10 +27,10 @@ async function getUser() {
 
 const TP_TYPES = ['None', 'Increase', 'Accelerate', 'Success', 'Decrease', 'Decelerate', 'Failure'];
 
-// Pastel colors from science repo — soft, muted tones
+// Light pastel colors — science repo preferred palette
 const PLOT_COLORS = [
-  '#d95f5f', '#5b9bd5', '#70ad47', '#ed7d31', '#9b59b6',
-  '#e6a532', '#888888', '#d95f5f', '#5b9bd5', '#70ad47'
+  '#f4a6a0', '#a1c9f4', '#b0d9a0', '#f9c784', '#d4a8e8',
+  '#f7e59a', '#c4c4c4', '#f4a6a0', '#a1c9f4', '#b0d9a0'
 ];
 
 // Replicate the legacy TP accumulation logic from Story.html
@@ -109,7 +109,26 @@ function renderChart(container, plots, scenes, turningPoints) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', labels: { font: { size: 12 } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: { size: 12, weight: '600' },
+            boxWidth: 0,
+            boxHeight: 0,
+            padding: 16,
+            generateLabels: function(chart) {
+              return chart.data.datasets.map((ds, i) => ({
+                text: ds.label,
+                fontColor: PLOT_COLORS[i % PLOT_COLORS.length],
+                fillStyle: 'transparent',
+                strokeStyle: 'transparent',
+                lineWidth: 0,
+                hidden: !chart.isDatasetVisible(i),
+                datasetIndex: i
+              }));
+            }
+          }
+        },
         tooltip: {
           callbacks: {
             title: (items) => items[0].label,
@@ -124,7 +143,7 @@ function renderChart(container, plots, scenes, turningPoints) {
       },
       scales: {
         x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
-        y: { ticks: { display: false }, title: { display: false }, grid: { color: '#f0f0f0' }, border: { display: false } }
+        y: { ticks: { display: false, count: 11 }, title: { display: false }, grid: { color: '#e8e8e8' }, border: { display: false } }
       }
     }
   });
@@ -235,7 +254,30 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       animation: { duration: 150 },
       interaction: { mode: 'nearest', intersect: true },
       plugins: {
-        legend: { position: 'top', labels: { font: { size: 13 } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: { size: 13, weight: '600' },
+            usePointStyle: false,
+            boxWidth: 0,
+            boxHeight: 0,
+            padding: 16,
+            color: function(context) {
+              return PLOT_COLORS[context.datasetIndex % PLOT_COLORS.length];
+            },
+            generateLabels: function(chart) {
+              return chart.data.datasets.map((ds, i) => ({
+                text: ds.label,
+                fontColor: PLOT_COLORS[i % PLOT_COLORS.length],
+                fillStyle: 'transparent',
+                strokeStyle: 'transparent',
+                lineWidth: 0,
+                hidden: !chart.isDatasetVisible(i),
+                datasetIndex: i
+              }));
+            }
+          }
+        },
         tooltip: {
           callbacks: {
             title: (items) => items[0].label,
@@ -285,9 +327,9 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
         y: {
           min: yMin,
           max: yMax,
-          ticks: { display: false },
+          ticks: { display: false, count: 11 },
           title: { display: false },
-          grid: { color: '#f0f0f0' },
+          grid: { color: '#e8e8e8' },
           border: { display: false }
         }
       }

@@ -5,4 +5,4 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "storycharts"
-database_id = "placeholder"
+database_id = "41752f86-e530-461e-aaa9-838c27b00e89"

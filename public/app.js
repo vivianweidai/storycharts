@@ -25,6 +25,11 @@ async function getUser() {
 
 // --- Chart rendering ---
 
+// Disable chart legend globally
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.plugins.legend.display = false;
+}
+
 // 20 discrete values: 1 through 20
 const TP_MIN = 1;
 const TP_MAX = 20;

@@ -81,7 +81,7 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
 /* Section dividers */
 .section-divider {
   border: none;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid #f0f0f0;
   margin: 20px 0 12px;
 }
 
@@ -128,38 +128,6 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
 .modal h2 { margin: 0 0 16px; color: #1f2328; }
 .modal .actions { margin-top: 16px; }
 
-/* Collapsible sections */
-details { margin: 8px 0; }
-details summary {
-  cursor: pointer;
-  padding: 8px 0;
-  font-weight: 600;
-  font-size: 0.95em;
-  border-bottom: 1px solid #f0f0f0;
-}
-details[open] summary { border-bottom-color: #d1d9e0; }
-details .detail-body { padding: 8px 0 8px 12px; font-size: 0.9em; color: #444; }
-
-/* Sortable list */
-.sort-list { list-style: none; }
-.sort-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.sort-item .sort-btns { display: flex; gap: 4px; }
-.sort-item .sort-btns button {
-  padding: 2px 6px;
-  border: 1px solid #d1d9e0;
-  border-radius: 4px;
-  background: #f6f8fa;
-  cursor: pointer;
-  font-size: 0.8em;
-}
-.sort-item .sort-btns button:hover { background: #ddf4ff; }
-.sort-item .sort-label { flex: 1; }
 
 /* Chart container */
 .chart-container { margin: 16px 0; }
@@ -167,23 +135,39 @@ details .detail-body { padding: 8px 0 8px 12px; font-size: 0.9em; color: #444; }
 /* Empty state */
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }
 
-/* Drag-and-drop reorder */
-.drag-list { }
-.drag-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
+/* Drag-reorder table */
+.drag-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0;
 }
-.drag-item.dragging { opacity: 0.3; }
+.drag-row td {
+  padding: 8px 6px;
+  vertical-align: top;
+  border-bottom: 1px solid #f0f0f0;
+}
+.drag-row:last-child td { border-bottom: none; }
+.drag-row.dragging { opacity: 0.3; }
+.drag-handle-cell { width: 20px; }
 .drag-handle {
   cursor: grab;
-  color: #b0b0b0;
+  color: #c8c8c8;
   font-size: 1em;
-  padding: 8px 2px 0 0;
   user-select: none;
   letter-spacing: -3px;
+  touch-action: none;
 }
 .drag-handle:hover { color: #656d76; }
+.drag-title {
+  font-weight: 600;
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+.drag-desc {
+  font-size: 0.85em;
+  color: #656d76;
+}
+.drag-actions { width: 1%; white-space: nowrap; }
 
 /* Back link */
 .back { font-size: 0.85em; margin-bottom: 12px; display: inline-block; }

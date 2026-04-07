@@ -64,44 +64,44 @@
       html += '</div>';
       html += '<p style="font-size:0.9em;color:#444;margin:4px 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
 
-      // Plots section with drag handles
+      // Plots section
       html += '<hr class="section-divider">';
       html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Plots</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addPlot()">+ Add</button>';
       html += '</div>';
       if (plots.length) {
-        html += '<div class="drag-list" id="plot-list">';
+        html += '<table class="drag-table" id="plot-list"><tbody>';
         for (const p of plots) {
-          html += '<div class="drag-item" data-id="' + p.id + '" draggable="true">';
-          if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
-          html += '<details open style="flex:1"><summary>' + (p.title || 'Untitled Plot');
-          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
-          html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
-          html += '</div>';
+          html += '<tr class="drag-row" data-id="' + p.id + '">';
+          if (isOwner) html += '<td class="drag-handle-cell"><span class="drag-handle">&#8942;&#8942;</span></td>';
+          html += '<td class="drag-title">' + (p.title || 'Untitled Plot') + '</td>';
+          html += '<td class="drag-desc">' + (p.description || '<em>No description</em>') + '</td>';
+          if (isOwner) html += '<td class="drag-actions"><button class="btn btn-sm" onclick="editPlot(' + p.id + ')">edit</button></td>';
+          html += '</tr>';
         }
-        html += '</div>';
+        html += '</tbody></table>';
       } else {
         html += '<p class="empty" style="padding:12px 0">No plots yet.</p>';
       }
 
-      // Scenes section with drag handles
+      // Scenes section
       html += '<hr class="section-divider">';
       html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Scenes</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addScene()">+ Add</button>';
       html += '</div>';
       if (scenes.length) {
-        html += '<div class="drag-list" id="scene-list">';
+        html += '<table class="drag-table" id="scene-list"><tbody>';
         for (const s of scenes) {
-          html += '<div class="drag-item" data-id="' + s.id + '" draggable="true">';
-          if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
-          html += '<details open style="flex:1"><summary>' + (s.title || 'Untitled Scene');
-          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
-          html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
-          html += '</div>';
+          html += '<tr class="drag-row" data-id="' + s.id + '">';
+          if (isOwner) html += '<td class="drag-handle-cell"><span class="drag-handle">&#8942;&#8942;</span></td>';
+          html += '<td class="drag-title">' + (s.title || 'Untitled Scene') + '</td>';
+          html += '<td class="drag-desc">' + (s.description || '<em>No description</em>') + '</td>';
+          if (isOwner) html += '<td class="drag-actions"><button class="btn btn-sm" onclick="editScene(' + s.id + ')">edit</button></td>';
+          html += '</tr>';
         }
-        html += '</div>';
+        html += '</tbody></table>';
       } else {
         html += '<p class="empty" style="padding:12px 0">No scenes yet.</p>';
       }
@@ -217,56 +217,69 @@
       });
     }
 
-    // --- Drag-and-drop reorder ---
+    // --- Touch + mouse drag reorder ---
 
     function initDragReorder() {
-      for (const list of document.querySelectorAll('.drag-list')) {
-        let dragItem = null;
-        let handleGrabbed = false;
+      for (const table of document.querySelectorAll('.drag-table')) {
+        const tbody = table.querySelector('tbody');
+        let dragRow = null;
+        let startY = 0;
+        let placeholder = null;
 
-        list.addEventListener('mousedown', (e) => {
-          handleGrabbed = !!e.target.closest('.drag-handle');
-        });
+        function getY(e) {
+          return e.touches ? e.touches[0].clientY : e.clientY;
+        }
 
-        list.addEventListener('dragstart', (e) => {
-          if (!handleGrabbed) { e.preventDefault(); return; }
-          dragItem = e.target.closest('.drag-item');
-          if (!dragItem) return;
-          dragItem.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-        });
-
-        list.addEventListener('dragover', (e) => {
+        function onStart(e) {
+          const handle = e.target.closest('.drag-handle');
+          if (!handle) return;
           e.preventDefault();
-          if (!dragItem) return;
-          const target = e.target.closest('.drag-item');
-          if (!target || target === dragItem) return;
-          const rect = target.getBoundingClientRect();
-          const mid = rect.top + rect.height / 2;
-          if (e.clientY < mid) {
-            list.insertBefore(dragItem, target);
-          } else {
-            list.insertBefore(dragItem, target.nextSibling);
-          }
-        });
+          dragRow = handle.closest('.drag-row');
+          startY = getY(e);
+          dragRow.classList.add('dragging');
+        }
 
-        list.addEventListener('dragend', async () => {
-          if (!dragItem) return;
-          dragItem.classList.remove('dragging');
-          dragItem = null;
-          handleGrabbed = false;
-          await saveOrder();
-        });
+        function onMove(e) {
+          if (!dragRow) return;
+          e.preventDefault();
+          const y = getY(e);
+          const rows = [...tbody.querySelectorAll('.drag-row')];
+          for (const row of rows) {
+            if (row === dragRow) continue;
+            const rect = row.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            if (y < mid && row === dragRow.previousElementSibling) {
+              tbody.insertBefore(dragRow, row);
+              break;
+            } else if (y > mid && row === dragRow.nextElementSibling) {
+              tbody.insertBefore(row, dragRow);
+              break;
+            }
+          }
+        }
+
+        function onEnd() {
+          if (!dragRow) return;
+          dragRow.classList.remove('dragging');
+          dragRow = null;
+          saveOrder();
+        }
+
+        tbody.addEventListener('mousedown', onStart);
+        tbody.addEventListener('touchstart', onStart, { passive: false });
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchend', onEnd);
       }
     }
 
     async function saveOrder() {
       const plotList = document.getElementById('plot-list');
       const sceneList = document.getElementById('scene-list');
-      const plotIds = plotList ? [...plotList.querySelectorAll('.drag-item')].map(el => parseInt(el.dataset.id)) : [];
-      const sceneIds = sceneList ? [...sceneList.querySelectorAll('.drag-item')].map(el => parseInt(el.dataset.id)) : [];
+      const plotIds = plotList ? [...plotList.querySelectorAll('.drag-row')].map(el => parseInt(el.dataset.id)) : [];
+      const sceneIds = sceneList ? [...sceneList.querySelectorAll('.drag-row')].map(el => parseInt(el.dataset.id)) : [];
       await api('POST', 'stories/' + storyData.story.id + '/order', { plots: plotIds, scenes: sceneIds });
-      // Reload to update chart with new order
       location.reload();
     }
   </script>

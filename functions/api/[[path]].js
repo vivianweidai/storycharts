@@ -150,7 +150,7 @@ async function requireOwner(env, user, storyId) {
 
 async function listStories(env, user) {
   const stories = await env.DB.prepare(
-    'SELECT id, title, userid, summary, updated_at FROM stories ORDER BY updated_at DESC'
+    'SELECT id, title, userid, summary FROM stories ORDER BY id DESC'
   ).all();
   return json(stories.results);
 }
@@ -194,22 +194,15 @@ async function createStory(env, user, body) {
     sceneResults.push(r.meta.last_row_id);
   }
 
-  // Generate template turning point values (1-20 scale)
-  // Each plot gets a distinct arc shape
-  const tpArcs = [
-    [8, 14, 18],   // Internal: steady rise
-    [12, 6, 16],   // Relationship: dip then rise
-    [14, 10, 8]    // External: gradual decline
-  ];
-
+  // Generate random turning point values (-10 to +10)
   const tpInsert = env.DB.prepare(
     'INSERT INTO turning_points (story_id, plot_id, scene_id, tp_type) VALUES (?, ?, ?, ?)'
   );
   const batch = [];
-  for (let pi = 0; pi < plotResults.length; pi++) {
-    for (let si = 0; si < sceneResults.length; si++) {
-      const value = tpArcs[pi] ? tpArcs[pi][si] : 10;
-      batch.push(tpInsert.bind(storyId, plotResults[pi], sceneResults[si], String(value)));
+  for (const plotId of plotResults) {
+    for (const sceneId of sceneResults) {
+      const value = Math.floor(Math.random() * 21) - 10;
+      batch.push(tpInsert.bind(storyId, plotId, sceneId, String(value)));
     }
   }
   if (batch.length) await env.DB.batch(batch);
@@ -327,7 +320,7 @@ async function saveTurningPoints(env, user, storyId, body) {
   );
   const batch = [delStmt];
   for (const tp of (body.turningPoints || [])) {
-    batch.push(insStmt.bind(storyId, tp.plot_id, tp.scene_id, String(tp.tp_type || '10')));
+    batch.push(insStmt.bind(storyId, tp.plot_id, tp.scene_id, String(tp.tp_type != null ? tp.tp_type : '0')));
   }
   await env.DB.batch(batch);
   return json({ ok: true });

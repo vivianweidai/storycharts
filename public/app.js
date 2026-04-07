@@ -30,10 +30,10 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.plugins.legend.display = false;
 }
 
-// 20 discrete values: 1 through 20
-const TP_MIN = 1;
-const TP_MAX = 20;
-const TP_DEFAULT = 10;
+// Absolute integer values: -10 to +10
+const TP_MIN = -10;
+const TP_MAX = 10;
+const TP_DEFAULT = 0;
 
 // Light pastel colors — science repo preferred palette
 const PLOT_COLORS = [
@@ -150,8 +150,8 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       scales: {
         x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
-          min: 0,
-          max: 21,
+          min: -11,
+          max: 11,
           ticks: { display: false, count: 11 },
           title: { display: false },
           grid: { color: '#e8e8e8' },

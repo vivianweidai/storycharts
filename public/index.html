@@ -39,7 +39,6 @@
           if (user && s.userid === user.userid) html += ' <span class="badge badge-own">yours</span>';
           html += '</h3>';
           if (s.summary) html += '<div class="summary">' + s.summary.substring(0, 120) + (s.summary.length > 120 ? '...' : '') + '</div>';
-          html += '<div class="meta">' + new Date(s.updated_at + 'Z').toLocaleDateString() + '</div>';
           html += '</li>';
         }
         html += '</ul>';

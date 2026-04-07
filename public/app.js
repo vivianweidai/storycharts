@@ -152,9 +152,12 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
       scales: {
         x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
         y: {
+          type: 'linear',
           min: -10,
           max: 10,
-          ticks: { display: false, count: 11 },
+          beginAtZero: false,
+          grace: 0,
+          ticks: { display: false, stepSize: 2 },
           title: { display: false },
           grid: { color: '#e8e8e8' },
           border: { display: false }

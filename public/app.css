@@ -195,5 +195,23 @@ details .detail-body { padding: 8px 0 8px 12px; font-size: 0.9em; color: #444; }
 .tp-down { background: #ffebe9; color: #cf222e; }
 .tp-none { background: #eaeef2; color: #656d76; }
 
+/* Drag-and-drop reorder */
+.drag-list { }
+.drag-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.drag-item.dragging { opacity: 0.3; }
+.drag-handle {
+  cursor: grab;
+  color: #b0b0b0;
+  font-size: 1em;
+  padding: 8px 2px 0 0;
+  user-select: none;
+  letter-spacing: -3px;
+}
+.drag-handle:hover { color: #656d76; }
+
 /* Back link */
 .back { font-size: 0.85em; margin-bottom: 12px; display: inline-block; }

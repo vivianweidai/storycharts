@@ -57,33 +57,6 @@
       }
       html += '</div>';
 
-      // Chart action buttons
-      if (isOwner && plots.length && scenes.length) {
-        html += '<div class="actions">';
-        html += '<button class="btn" onclick="saveChart()">Save Chart</button>';
-        if (turningPoints.length) {
-          html += '<button class="btn btn-danger" onclick="clearChart()">Clear Chart</button>';
-        }
-        if (plots.length > 1 || scenes.length > 1) {
-          html += '<button class="btn" onclick="showOrder()">Reorder</button>';
-        }
-        html += '</div>';
-      }
-
-      // TP legend
-      if (plots.length && scenes.length) {
-        html += '<div class="tp-legend">';
-        html += '<div class="tp-legend-title">Turning Point Types (drag points to change)</div>';
-        html += '<div class="tp-legend-items">';
-        html += '<span class="tp-tag tp-up">Success +3</span>';
-        html += '<span class="tp-tag tp-up">Accelerate +2</span>';
-        html += '<span class="tp-tag tp-up">Increase +1</span>';
-        html += '<span class="tp-tag tp-none">None 0</span>';
-        html += '<span class="tp-tag tp-down">Decrease -1</span>';
-        html += '<span class="tp-tag tp-down">Decelerate -2</span>';
-        html += '<span class="tp-tag tp-down">Failure -3</span>';
-        html += '</div></div>';
-      }
 
       // Summary section with inline edit
       html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
@@ -92,32 +65,42 @@
       html += '</div>';
       html += '<p style="font-size:0.9em;color:#444;margin:0 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
 
-      // Plots section with inline Add Plot button
+      // Plots section with drag handles
       html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
       html += '<h2 style="margin:0">Plots</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addPlot()">+ Add</button>';
       html += '</div>';
       if (plots.length) {
+        html += '<div class="drag-list" id="plot-list">';
         for (const p of plots) {
-          html += '<details open><summary>' + (p.title || 'Untitled Plot');
+          html += '<div class="drag-item" data-id="' + p.id + '" draggable="true">';
+          if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
+          html += '<details open style="flex:1"><summary>' + (p.title || 'Untitled Plot');
           if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
+          html += '</div>';
         }
+        html += '</div>';
       } else {
         html += '<p class="empty" style="padding:12px 0">No plots yet.</p>';
       }
 
-      // Scenes section with inline Add Scene button
+      // Scenes section with drag handles
       html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
       html += '<h2 style="margin:0">Scenes</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addScene()">+ Add</button>';
       html += '</div>';
       if (scenes.length) {
+        html += '<div class="drag-list" id="scene-list">';
         for (const s of scenes) {
-          html += '<details open><summary>' + (s.title || 'Untitled Scene');
+          html += '<div class="drag-item" data-id="' + s.id + '" draggable="true">';
+          if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
+          html += '<details open style="flex:1"><summary>' + (s.title || 'Untitled Scene');
           if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
+          html += '</div>';
         }
+        html += '</div>';
       } else {
         html += '<p class="empty" style="padding:12px 0">No scenes yet.</p>';
       }
@@ -128,14 +111,18 @@
       if (plots.length && scenes.length) {
         chartInstance = renderDraggableChart(
           document.getElementById('chart-area'),
-          plots, scenes, turningPoints
+          plots, scenes, turningPoints,
+          () => autoSaveChart()
         );
       }
+
+      // Init drag-and-drop reordering for plots and scenes
+      if (isOwner) initDragReorder();
     }
 
-    // --- Chart save/clear ---
+    // --- Chart auto-save ---
 
-    async function saveChart() {
+    async function autoSaveChart() {
       if (!chartInstance || !chartInstance._tpMap) return;
       const tpMap = chartInstance._tpMap;
       const tps = [];
@@ -150,13 +137,6 @@
         }
       }
       await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
-      location.reload();
-    }
-
-    async function clearChart() {
-      if (!confirm('Delete all chart data for this story?')) return;
-      await api('DELETE', 'stories/' + storyData.story.id + '/turningpoints');
-      location.reload();
     }
 
     // --- Story CRUD ---
@@ -240,60 +220,57 @@
       });
     }
 
-    // --- Reorder ---
+    // --- Drag-and-drop reorder ---
 
-    function showOrder() {
-      const { story, plots, scenes } = storyData;
-      const overlay = document.createElement('div');
-      overlay.className = 'modal-overlay';
+    function initDragReorder() {
+      for (const list of document.querySelectorAll('.drag-list')) {
+        let dragItem = null;
+        let handleGrabbed = false;
 
-      let html = '<div class="modal" style="max-width:600px"><h2>Reorder</h2>';
+        list.addEventListener('mousedown', (e) => {
+          handleGrabbed = !!e.target.closest('.drag-handle');
+        });
 
-      if (plots.length > 1) {
-        html += '<h2 style="margin-top:8px">Plots</h2><ul class="sort-list" id="sort-plots">';
-        for (const p of plots) {
-          html += '<li class="sort-item" data-id="' + p.id + '">';
-          html += '<div class="sort-btns"><button onclick="moveItem(this,-1)">&#9650;</button><button onclick="moveItem(this,1)">&#9660;</button></div>';
-          html += '<span class="sort-label">' + (p.title || 'Untitled') + '</span></li>';
-        }
-        html += '</ul>';
+        list.addEventListener('dragstart', (e) => {
+          if (!handleGrabbed) { e.preventDefault(); return; }
+          dragItem = e.target.closest('.drag-item');
+          if (!dragItem) return;
+          dragItem.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        list.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (!dragItem) return;
+          const target = e.target.closest('.drag-item');
+          if (!target || target === dragItem) return;
+          const rect = target.getBoundingClientRect();
+          const mid = rect.top + rect.height / 2;
+          if (e.clientY < mid) {
+            list.insertBefore(dragItem, target);
+          } else {
+            list.insertBefore(dragItem, target.nextSibling);
+          }
+        });
+
+        list.addEventListener('dragend', async () => {
+          if (!dragItem) return;
+          dragItem.classList.remove('dragging');
+          dragItem = null;
+          handleGrabbed = false;
+          await saveOrder();
+        });
       }
-
-      if (scenes.length > 1) {
-        html += '<h2 style="margin-top:8px">Scenes</h2><ul class="sort-list" id="sort-scenes">';
-        for (const s of scenes) {
-          html += '<li class="sort-item" data-id="' + s.id + '">';
-          html += '<div class="sort-btns"><button onclick="moveItem(this,-1)">&#9650;</button><button onclick="moveItem(this,1)">&#9660;</button></div>';
-          html += '<span class="sort-label">' + (s.title || 'Untitled') + '</span></li>';
-        }
-        html += '</ul>';
-      }
-
-      html += '<div class="actions"><button class="btn btn-primary" id="save-order">Save Order</button>';
-      html += '<button class="btn" id="cancel-order">Cancel</button></div></div>';
-
-      overlay.innerHTML = html;
-      document.body.appendChild(overlay);
-
-      document.getElementById('save-order').onclick = async () => {
-        const plotIds = [...document.querySelectorAll('#sort-plots .sort-item')].map(el => parseInt(el.dataset.id));
-        const sceneIds = [...document.querySelectorAll('#sort-scenes .sort-item')].map(el => parseInt(el.dataset.id));
-        await api('POST', 'stories/' + story.id + '/order', { plots: plotIds, scenes: sceneIds });
-        document.body.removeChild(overlay);
-        location.reload();
-      };
-
-      document.getElementById('cancel-order').onclick = () => document.body.removeChild(overlay);
     }
 
-    function moveItem(btn, dir) {
-      const item = btn.closest('.sort-item');
-      const list = item.parentNode;
-      if (dir === -1 && item.previousElementSibling) {
-        list.insertBefore(item, item.previousElementSibling);
-      } else if (dir === 1 && item.nextElementSibling) {
-        list.insertBefore(item.nextElementSibling, item);
-      }
+    async function saveOrder() {
+      const plotList = document.getElementById('plot-list');
+      const sceneList = document.getElementById('scene-list');
+      const plotIds = plotList ? [...plotList.querySelectorAll('.drag-item')].map(el => parseInt(el.dataset.id)) : [];
+      const sceneIds = sceneList ? [...sceneList.querySelectorAll('.drag-item')].map(el => parseInt(el.dataset.id)) : [];
+      await api('POST', 'stories/' + storyData.story.id + '/order', { plots: plotIds, scenes: sceneIds });
+      // Reload to update chart with new order
+      location.reload();
     }
   </script>
 </body>

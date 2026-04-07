@@ -43,9 +43,8 @@
       // Title row with edit (includes delete)
       html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
-      if (story.private) html += '<span class="badge badge-private">private</span>';
       if (isOwner) {
-        html += '<button class="btn-icon" onclick="editStory()" title="Edit story">&#9998;</button>';
+        html += '<button class="btn btn-sm" onclick="editStory()">edit</button>';
       }
       html += '</div>';
 
@@ -61,7 +60,7 @@
       html += '<hr class="section-divider">';
       html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Summary</h2>';
-      if (isOwner) html += '<button class="btn-icon" onclick="editSummary()" title="Edit summary">&#9998;</button>';
+      if (isOwner) html += '<button class="btn btn-sm" onclick="editSummary()">edit</button>';
       html += '</div>';
       html += '<p style="font-size:0.9em;color:#444;margin:4px 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
 
@@ -77,7 +76,7 @@
           html += '<div class="drag-item" data-id="' + p.id + '" draggable="true">';
           if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
           html += '<details open style="flex:1"><summary>' + (p.title || 'Untitled Plot');
-          if (isOwner) html += ' <button class="btn-icon" onclick="event.stopPropagation();editPlot(' + p.id + ')" title="Edit plot">&#9998;</button>';
+          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
           html += '</div>';
         }
@@ -98,7 +97,7 @@
           html += '<div class="drag-item" data-id="' + s.id + '" draggable="true">';
           if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
           html += '<details open style="flex:1"><summary>' + (s.title || 'Untitled Scene');
-          if (isOwner) html += ' <button class="btn-icon" onclick="event.stopPropagation();editScene(' + s.id + ')" title="Edit scene">&#9998;</button>';
+          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
           html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
           html += '</div>';
         }
@@ -146,10 +145,9 @@
     function editStory() {
       const s = storyData.story;
       showModal('Edit Story', [
-        { name: 'title', label: 'Title', type: 'text', value: s.title },
-        { name: 'private', label: 'Visibility', type: 'checkbox', checkLabel: 'Private', value: s.private }
+        { name: 'title', label: 'Title', type: 'text', value: s.title }
       ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { ...data, summary: s.summary });
+        await api('PUT', 'stories/' + s.id, { title: data.title, summary: s.summary });
         location.reload();
       }, async () => {
         await api('DELETE', 'stories/' + s.id);
@@ -162,7 +160,7 @@
       showModal('Edit Summary', [
         { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary }
       ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { title: s.title, private: s.private, summary: data.summary });
+        await api('PUT', 'stories/' + s.id, { title: s.title, summary: data.summary });
         location.reload();
       });
     }

@@ -149,23 +149,16 @@ async function requireOwner(env, user, storyId) {
 // --- Story handlers ---
 
 async function listStories(env, user) {
-  let stories;
-  if (user) {
-    stories = await env.DB.prepare(
-      'SELECT id, title, private, userid, summary, updated_at FROM stories WHERE private = 0 OR userid = ? ORDER BY updated_at DESC'
-    ).bind(user.userid).all();
-  } else {
-    stories = await env.DB.prepare(
-      'SELECT id, title, private, userid, summary, updated_at FROM stories WHERE private = 0 ORDER BY updated_at DESC'
-    ).all();
-  }
+  const stories = await env.DB.prepare(
+    'SELECT id, title, userid, summary, updated_at FROM stories ORDER BY updated_at DESC'
+  ).all();
   return json(stories.results);
 }
 
 async function createStory(env, user, body) {
   const result = await env.DB.prepare(
-    'INSERT INTO stories (title, private, userid, email, summary) VALUES (?, ?, ?, ?, ?)'
-  ).bind(body.title || '', body.private ? 1 : 0, user.userid, user.email, body.summary || '').run();
+    'INSERT INTO stories (title, private, userid, email, summary) VALUES (?, 0, ?, ?, ?)'
+  ).bind(body.title || '', user.userid, user.email, body.summary || '').run();
   const storyId = result.meta.last_row_id;
 
   // Auto-populate with 3 default plots and 3 scenes
@@ -227,7 +220,6 @@ async function createStory(env, user, body) {
 async function getStory(env, user, id) {
   const story = await env.DB.prepare('SELECT * FROM stories WHERE id = ?').bind(id).first();
   if (!story) return json({ error: 'Not found' }, 404);
-  if (story.private && (!user || user.userid !== story.userid)) return json({ error: 'Forbidden' }, 403);
 
   const [plots, scenes, tps] = await Promise.all([
     env.DB.prepare('SELECT * FROM plots WHERE story_id = ? ORDER BY sort_order').bind(id).all(),
@@ -247,8 +239,8 @@ async function getStory(env, user, id) {
 async function updateStory(env, user, id, body) {
   await requireOwner(env, user, id);
   await env.DB.prepare(
-    'UPDATE stories SET title = ?, private = ?, summary = ?, updated_at = datetime(\'now\') WHERE id = ?'
-  ).bind(body.title || '', body.private ? 1 : 0, body.summary || '', id).run();
+    'UPDATE stories SET title = ?, summary = ?, updated_at = datetime(\'now\') WHERE id = ?'
+  ).bind(body.title || '', body.summary || '', id).run();
   return json({ ok: true });
 }
 

@@ -37,7 +37,6 @@
         for (const s of stories) {
           html += '<li class="story-card"><h3><a href="/story.html?id=' + s.id + '">' + (s.title || 'Untitled') + '</a>';
           if (user && s.userid === user.userid) html += ' <span class="badge badge-own">yours</span>';
-          if (s.private) html += ' <span class="badge badge-private">private</span>';
           html += '</h3>';
           if (s.summary) html += '<div class="summary">' + s.summary.substring(0, 120) + (s.summary.length > 120 ? '...' : '') + '</div>';
           html += '<div class="meta">' + new Date(s.updated_at + 'Z').toLocaleDateString() + '</div>';
@@ -56,8 +55,7 @@
           try {
             const result = await api('POST', 'stories', {
               title: 'My Story',
-              summary: 'A story about...',
-              private: true
+              summary: 'A story about...'
             });
             window.location.href = '/story.html?id=' + result.id;
           } catch (e) {

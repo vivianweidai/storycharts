@@ -40,13 +40,12 @@
       const content = document.getElementById('content');
       let html = '';
 
-      // Title row with edit/delete
+      // Title row with edit (includes delete)
       html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
       if (story.private) html += '<span class="badge badge-private">private</span>';
       if (isOwner) {
-        html += '<button class="btn btn-sm" onclick="editStory()">edit</button>';
-        html += '<button class="btn btn-sm btn-danger" onclick="deleteStory()">delete</button>';
+        html += '<button class="btn-icon" onclick="editStory()" title="Edit story">&#9998;</button>';
       }
       html += '</div>';
 
@@ -58,15 +57,17 @@
       html += '</div>';
 
 
-      // Summary section with inline edit
-      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      // Summary section
+      html += '<hr class="section-divider">';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Summary</h2>';
-      if (isOwner) html += '<button class="btn btn-sm" onclick="editSummary()">edit</button>';
+      if (isOwner) html += '<button class="btn-icon" onclick="editSummary()" title="Edit summary">&#9998;</button>';
       html += '</div>';
-      html += '<p style="font-size:0.9em;color:#444;margin:0 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
+      html += '<p style="font-size:0.9em;color:#444;margin:4px 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
 
       // Plots section with drag handles
-      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      html += '<hr class="section-divider">';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Plots</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addPlot()">+ Add</button>';
       html += '</div>';
@@ -76,7 +77,7 @@
           html += '<div class="drag-item" data-id="' + p.id + '" draggable="true">';
           if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
           html += '<details open style="flex:1"><summary>' + (p.title || 'Untitled Plot');
-          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
+          if (isOwner) html += ' <button class="btn-icon" onclick="event.stopPropagation();editPlot(' + p.id + ')" title="Edit plot">&#9998;</button>';
           html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
           html += '</div>';
         }
@@ -86,7 +87,8 @@
       }
 
       // Scenes section with drag handles
-      html += '<div style="display:flex;align-items:center;gap:8px;margin:16px 0 4px">';
+      html += '<hr class="section-divider">';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
       html += '<h2 style="margin:0">Scenes</h2>';
       if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addScene()">+ Add</button>';
       html += '</div>';
@@ -96,7 +98,7 @@
           html += '<div class="drag-item" data-id="' + s.id + '" draggable="true">';
           if (isOwner) html += '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
           html += '<details open style="flex:1"><summary>' + (s.title || 'Untitled Scene');
-          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
+          if (isOwner) html += ' <button class="btn-icon" onclick="event.stopPropagation();editScene(' + s.id + ')" title="Edit scene">&#9998;</button>';
           html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
           html += '</div>';
         }
@@ -149,6 +151,9 @@
       ], async (data) => {
         await api('PUT', 'stories/' + s.id, { ...data, summary: s.summary });
         location.reload();
+      }, async () => {
+        await api('DELETE', 'stories/' + s.id);
+        location.href = '/';
       });
     }
 
@@ -160,12 +165,6 @@
         await api('PUT', 'stories/' + s.id, { title: s.title, private: s.private, summary: data.summary });
         location.reload();
       });
-    }
-
-    async function deleteStory() {
-      if (!confirm('Delete this story and all its plots, scenes, and chart data?')) return;
-      await api('DELETE', 'stories/' + storyData.story.id);
-      location.href = '/';
     }
 
     // --- Plot CRUD ---

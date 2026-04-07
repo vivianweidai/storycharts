@@ -27,9 +27,10 @@ async function getUser() {
 
 const TP_TYPES = ['None', 'Increase', 'Accelerate', 'Success', 'Decrease', 'Decelerate', 'Failure'];
 
+// Pastel colors from science repo — soft, muted tones
 const PLOT_COLORS = [
-  '#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
-  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+  '#d95f5f', '#5b9bd5', '#70ad47', '#ed7d31', '#9b59b6',
+  '#e6a532', '#888888', '#d95f5f', '#5b9bd5', '#70ad47'
 ];
 
 // Replicate the legacy TP accumulation logic from Story.html
@@ -123,7 +124,7 @@ function renderChart(container, plots, scenes, turningPoints) {
       },
       scales: {
         x: { title: { display: true, text: 'Scenes' } },
-        y: { title: { display: true, text: 'Value' }, grid: { color: '#f0f0f0' } }
+        y: { ticks: { display: false }, title: { display: false }, grid: { color: '#f0f0f0' }, border: { display: false } }
       }
     }
   });
@@ -284,9 +285,10 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
         y: {
           min: yMin,
           max: yMax,
-          ticks: { stepSize: 1 },
-          title: { display: true, text: 'Plot Progression' },
-          grid: { color: '#f0f0f0' }
+          ticks: { display: false },
+          title: { display: false },
+          grid: { color: '#f0f0f0' },
+          border: { display: false }
         }
       }
     }

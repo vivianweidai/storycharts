@@ -166,7 +166,56 @@ async function createStory(env, user, body) {
   const result = await env.DB.prepare(
     'INSERT INTO stories (title, private, userid, email, summary) VALUES (?, ?, ?, ?, ?)'
   ).bind(body.title || '', body.private ? 1 : 0, user.userid, user.email, body.summary || '').run();
-  return json({ id: result.meta.last_row_id }, 201);
+  const storyId = result.meta.last_row_id;
+
+  // Auto-populate with 3 default plots and 3 scenes
+  const plotNames = ['Internal', 'Relationship', 'External'];
+  const sceneNames = ['Scene 1', 'Scene 2', 'Scene 3'];
+
+  const plotInsert = env.DB.prepare(
+    'INSERT INTO plots (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)'
+  );
+  const sceneInsert = env.DB.prepare(
+    'INSERT INTO scenes (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)'
+  );
+
+  // Create plots
+  const plotResults = [];
+  for (let i = 0; i < plotNames.length; i++) {
+    const r = await plotInsert.bind(storyId, plotNames[i], '', i + 1).run();
+    plotResults.push(r.meta.last_row_id);
+  }
+
+  // Create scenes
+  const sceneResults = [];
+  for (let i = 0; i < sceneNames.length; i++) {
+    const r = await sceneInsert.bind(storyId, sceneNames[i], '', i + 1).run();
+    sceneResults.push(r.meta.last_row_id);
+  }
+
+  // Generate random escalating turning points
+  // Scene 1: small moves (Increase/Decrease), Scene 2: medium (Accelerate/Decelerate),
+  // Scene 3: big (Success/Failure)
+  const tpTiers = [
+    ['Increase', 'Decrease'],
+    ['Increase', 'Decrease', 'Accelerate', 'Decelerate'],
+    ['Accelerate', 'Decelerate', 'Success', 'Failure']
+  ];
+
+  const tpInsert = env.DB.prepare(
+    'INSERT INTO turning_points (story_id, plot_id, scene_id, tp_type) VALUES (?, ?, ?, ?)'
+  );
+  const batch = [];
+  for (const plotId of plotResults) {
+    for (let si = 0; si < sceneResults.length; si++) {
+      const tier = tpTiers[si];
+      const tpType = tier[Math.floor(Math.random() * tier.length)];
+      batch.push(tpInsert.bind(storyId, plotId, sceneResults[si], tpType));
+    }
+  }
+  if (batch.length) await env.DB.batch(batch);
+
+  return json({ id: storyId }, 201);
 }
 
 async function getStory(env, user, id) {

@@ -11,7 +11,6 @@
 </head>
 <body>
   <div class="header" id="header"></div>
-  <a class="back" href="/">&larr; All Stories</a>
   <div id="content"><p class="empty">Loading...</p></div>
 
   <script src="/app.js"></script>
@@ -51,17 +50,17 @@
       }
       html += '</div>';
 
-      // Summary
-      if (story.summary) {
-        html += '<p style="font-size:0.9em;color:#444;margin:8px 0">' + story.summary + '</p>';
-      }
-
       // Chart area — always present
       html += '<div class="chart-container" id="chart-area" style="height:400px;margin:16px 0">';
       if (!plots.length && !scenes.length) {
         html += '<p class="empty">Add plots and scenes to build your chart.</p>';
       }
       html += '</div>';
+
+      // Summary below chart
+      if (story.summary) {
+        html += '<p style="font-size:0.9em;color:#444;margin:8px 0">' + story.summary + '</p>';
+      }
 
       // Action buttons below chart
       if (isOwner) {

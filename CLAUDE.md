@@ -30,24 +30,38 @@ Data models: Story, Plot, Scene, TurningPoint — hierarchical (story contains p
 Modernize onto **Cloudflare** stack with **GitHub** for version control and auto-deploy:
 
 ### Stack
-- **Cloudflare Pages** — hosts the frontend
-- **Cloudflare Workers** — backend logic (replaces App Engine handlers)
+- **Cloudflare Pages** — hosts the frontend (static HTML/JS/CSS)
+- **Cloudflare Pages Functions** — backend API (single catch-all Worker)
 - **Cloudflare D1** — SQLite database (replaces NDB/Datastore)
-- **Google OAuth** — keep Google login (original app used this)
-- **GitHub private repo** — push to `main` auto-deploys to Cloudflare (repo is public for now to preserve legacy code, switch to private when rewrite begins)
+- **Cloudflare Access** — Zero Trust auth (replaces Google Users API)
+- **GitHub repo** — push to `main` auto-deploys to Cloudflare
 
 ### Cloudflare Free Tier (sufficient for low traffic)
 - Pages: unlimited sites, unlimited bandwidth
 - Workers: 100k requests/day
 - D1: 5M reads/day, 100k writes/day, 5GB storage
 
-### Rewrite Steps
-1. Scaffold a Cloudflare Workers project with D1
-2. Port the data models (Story, Plot, Scene, TurningPoint) to D1/SQLite schema
-3. Port the API routes (CRUD for each model, ordering, chart data)
-4. Build a clean modern frontend (replace jQuery Mobile)
-5. Wire up Google OAuth
-6. Connect GitHub repo to Cloudflare Pages for auto-deploy
+### Project Structure
+```
+storycharts/
+  wrangler.toml              # Cloudflare config
+  package.json               # wrangler dev dependency
+  schema.sql                 # D1 database schema
+  public/                    # Static frontend (served by Cloudflare Pages)
+    index.html               # Story listing
+    story.html               # View/edit story + chart
+    chart.html               # Turning point editor with live preview
+    app.js                   # Shared JS: API client, Chart.js rendering, modals
+    app.css                  # Stylesheet
+  functions/api/[[path]].js  # Single catch-all Worker (all API routes)
+```
+
+### Deployment Steps
+1. Create D1 database: `wrangler d1 create storycharts`
+2. Update `wrangler.toml` with real database_id
+3. Connect GitHub repo to Cloudflare Pages for auto-deploy
+4. Configure Cloudflare Access for auth (Zero Trust dashboard)
+5. Point storycharts.com DNS to Cloudflare Pages
 
 ### Design Principles
 - Concise simplicity — minimal code, minimal dependencies

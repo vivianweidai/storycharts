@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Charts</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="icon" href="/favicon/favicon.ico">
+</head>
+<body>
+  <div class="header" id="header"></div>
+  <div id="content"><p class="empty">Loading...</p></div>
+
+  <script src="/app.js"></script>
+  <script>
+    (async function() {
+      const user = await getUser();
+      renderHeader(user);
+
+      const stories = await api('GET', 'stories');
+      const content = document.getElementById('content');
+
+      if (!stories.length && !user) {
+        content.innerHTML = '<p class="empty">No stories yet. <a href="/api/auth/login">Login</a> to create one.</p>';
+        return;
+      }
+
+      let html = '';
+      if (user) {
+        html += '<div class="actions"><button class="btn btn-primary" id="create-btn">Create Story</button></div>';
+      }
+
+      if (!stories.length) {
+        html += '<p class="empty">No stories yet. Create your first one!</p>';
+      } else {
+        html += '<ul class="story-list">';
+        for (const s of stories) {
+          html += '<li class="story-card"><h3><a href="/story.html?id=' + s.id + '">' + (s.title || 'Untitled') + '</a>';
+          if (user && s.userid === user.userid) html += ' <span class="badge badge-own">yours</span>';
+          if (s.private) html += ' <span class="badge badge-private">private</span>';
+          html += '</h3>';
+          if (s.summary) html += '<div class="summary">' + s.summary.substring(0, 120) + (s.summary.length > 120 ? '...' : '') + '</div>';
+          html += '<div class="meta">' + new Date(s.updated_at + 'Z').toLocaleDateString() + '</div>';
+          html += '</li>';
+        }
+        html += '</ul>';
+      }
+
+      content.innerHTML = html;
+
+      const createBtn = document.getElementById('create-btn');
+      if (createBtn) {
+        createBtn.onclick = () => {
+          showModal('New Story', [
+            { name: 'title', label: 'Title', type: 'text' },
+            { name: 'summary', label: 'Summary', type: 'textarea' },
+            { name: 'private', label: 'Visibility', type: 'checkbox', checkLabel: 'Private', value: true }
+          ], async (data) => {
+            const result = await api('POST', 'stories', data);
+            window.location.href = '/story.html?id=' + result.id;
+          });
+        };
+      }
+    })();
+  </script>
+</body>
+</html>

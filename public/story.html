@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Charts</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="icon" href="/favicon/favicon.ico">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+  <div class="header" id="header"></div>
+  <a class="back" href="/">&larr; All Stories</a>
+  <div id="content"><p class="empty">Loading...</p></div>
+
+  <script src="/app.js"></script>
+  <script>
+    let storyData = null;
+
+    (async function() {
+      const user = await getUser();
+      renderHeader(user);
+
+      const id = new URLSearchParams(location.search).get('id');
+      if (!id) { location.href = '/'; return; }
+
+      try {
+        storyData = await api('GET', 'stories/' + id);
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>';
+        return;
+      }
+
+      render(storyData, user);
+    })();
+
+    function render(data, user) {
+      const { story, plots, scenes, turningPoints, isOwner } = data;
+      const content = document.getElementById('content');
+      let html = '';
+
+      // Title
+      html += '<h1>' + (story.title || 'Untitled');
+      if (story.private) html += ' <span class="badge badge-private">private</span>';
+      html += '</h1>';
+
+      // Chart
+      if (turningPoints.length) {
+        html += '<div class="chart-container" id="chart-box" style="height:300px"></div>';
+      }
+
+      // Owner actions
+      if (isOwner) {
+        html += '<div class="actions">';
+        html += '<button class="btn" onclick="editStory()">Edit Story</button>';
+        html += '<button class="btn" onclick="addPlot()">Add Plot</button>';
+        html += '<button class="btn" onclick="addScene()">Add Scene</button>';
+        if (plots.length && scenes.length) {
+          html += '<a class="btn" href="/chart.html?id=' + story.id + '">Edit Chart</a>';
+        }
+        if (plots.length > 1 || scenes.length > 1) {
+          html += '<button class="btn" onclick="showOrder()">Reorder</button>';
+        }
+        html += '<button class="btn btn-danger" onclick="deleteStory()">Delete</button>';
+        html += '</div>';
+      }
+
+      // Summary
+      if (story.summary) {
+        html += '<h2>Summary</h2><p style="font-size:0.9em;color:#444">' + story.summary + '</p>';
+      }
+
+      // Plots
+      if (plots.length) {
+        html += '<h2>Plots</h2>';
+        for (const p of plots) {
+          html += '<details><summary>' + (p.title || 'Untitled Plot');
+          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editPlot(' + p.id + ')">edit</button>';
+          html += '</summary><div class="detail-body">' + (p.description || '<em>No description</em>') + '</div></details>';
+        }
+      }
+
+      // Scenes
+      if (scenes.length) {
+        html += '<h2>Scenes</h2>';
+        for (const s of scenes) {
+          html += '<details><summary>' + (s.title || 'Untitled Scene');
+          if (isOwner) html += ' <button class="btn btn-sm" onclick="event.stopPropagation();editScene(' + s.id + ')">edit</button>';
+          html += '</summary><div class="detail-body">' + (s.description || '<em>No description</em>') + '</div></details>';
+        }
+      }
+
+      content.innerHTML = html;
+
+      // Render chart
+      if (turningPoints.length) {
+        renderChart(document.getElementById('chart-box'), plots, scenes, turningPoints);
+      }
+    }
+
+    // --- Story CRUD ---
+
+    function editStory() {
+      const s = storyData.story;
+      showModal('Edit Story', [
+        { name: 'title', label: 'Title', type: 'text', value: s.title },
+        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary },
+        { name: 'private', label: 'Visibility', type: 'checkbox', checkLabel: 'Private', value: s.private }
+      ], async (data) => {
+        await api('PUT', 'stories/' + s.id, data);
+        location.reload();
+      });
+    }
+
+    async function deleteStory() {
+      if (!confirm('Delete this story and all its plots, scenes, and chart data?')) return;
+      await api('DELETE', 'stories/' + storyData.story.id);
+      location.href = '/';
+    }
+
+    // --- Plot CRUD ---
+
+    function addPlot() {
+      showModal('New Plot', [
+        { name: 'title', label: 'Title', type: 'text' },
+        { name: 'description', label: 'Description', type: 'textarea' }
+      ], async (data) => {
+        await api('POST', 'stories/' + storyData.story.id + '/plots', data);
+        location.reload();
+      });
+    }
+
+    function editPlot(plotId) {
+      const p = storyData.plots.find(x => x.id === plotId);
+      showModal('Edit Plot', [
+        { name: 'title', label: 'Title', type: 'text', value: p.title },
+        { name: 'description', label: 'Description', type: 'textarea', value: p.description }
+      ], async (data) => {
+        await api('PUT', 'plots/' + plotId, data);
+        location.reload();
+      }, async () => {
+        await api('DELETE', 'plots/' + plotId);
+        location.reload();
+      });
+    }
+
+    // --- Scene CRUD ---
+
+    function addScene() {
+      showModal('New Scene', [
+        { name: 'title', label: 'Title', type: 'text' },
+        { name: 'description', label: 'Description', type: 'textarea' }
+      ], async (data) => {
+        await api('POST', 'stories/' + storyData.story.id + '/scenes', data);
+        location.reload();
+      });
+    }
+
+    function editScene(sceneId) {
+      const s = storyData.scenes.find(x => x.id === sceneId);
+      showModal('Edit Scene', [
+        { name: 'title', label: 'Title', type: 'text', value: s.title },
+        { name: 'description', label: 'Description', type: 'textarea', value: s.description }
+      ], async (data) => {
+        await api('PUT', 'scenes/' + sceneId, data);
+        location.reload();
+      }, async () => {
+        await api('DELETE', 'scenes/' + sceneId);
+        location.reload();
+      });
+    }
+
+    // --- Reorder ---
+
+    function showOrder() {
+      const { story, plots, scenes } = storyData;
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+
+      let html = '<div class="modal" style="max-width:600px"><h2>Reorder</h2>';
+
+      if (plots.length > 1) {
+        html += '<h2 style="margin-top:8px">Plots</h2><ul class="sort-list" id="sort-plots">';
+        for (const p of plots) {
+          html += '<li class="sort-item" data-id="' + p.id + '">';
+          html += '<div class="sort-btns"><button onclick="moveItem(this,-1)">&#9650;</button><button onclick="moveItem(this,1)">&#9660;</button></div>';
+          html += '<span class="sort-label">' + (p.title || 'Untitled') + '</span></li>';
+        }
+        html += '</ul>';
+      }
+
+      if (scenes.length > 1) {
+        html += '<h2 style="margin-top:8px">Scenes</h2><ul class="sort-list" id="sort-scenes">';
+        for (const s of scenes) {
+          html += '<li class="sort-item" data-id="' + s.id + '">';
+          html += '<div class="sort-btns"><button onclick="moveItem(this,-1)">&#9650;</button><button onclick="moveItem(this,1)">&#9660;</button></div>';
+          html += '<span class="sort-label">' + (s.title || 'Untitled') + '</span></li>';
+        }
+        html += '</ul>';
+      }
+
+      html += '<div class="actions"><button class="btn btn-primary" id="save-order">Save Order</button>';
+      html += '<button class="btn" id="cancel-order">Cancel</button></div></div>';
+
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+
+      document.getElementById('save-order').onclick = async () => {
+        const plotIds = [...document.querySelectorAll('#sort-plots .sort-item')].map(el => parseInt(el.dataset.id));
+        const sceneIds = [...document.querySelectorAll('#sort-scenes .sort-item')].map(el => parseInt(el.dataset.id));
+        await api('POST', 'stories/' + story.id + '/order', { plots: plotIds, scenes: sceneIds });
+        document.body.removeChild(overlay);
+        location.reload();
+      };
+
+      document.getElementById('cancel-order').onclick = () => document.body.removeChild(overlay);
+    }
+
+    function moveItem(btn, dir) {
+      const item = btn.closest('.sort-item');
+      const list = item.parentNode;
+      if (dir === -1 && item.previousElementSibling) {
+        list.insertBefore(item, item.previousElementSibling);
+      } else if (dir === 1 && item.nextElementSibling) {
+        list.insertBefore(item.nextElementSibling, item);
+      }
+    }
+  </script>
+</body>
+</html>

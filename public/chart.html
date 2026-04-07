@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Chart — Story Charts</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="icon" href="/favicon/favicon.ico">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+  <div class="header" id="header"></div>
+  <div id="back-link"></div>
+  <div id="content"><p class="empty">Loading...</p></div>
+
+  <script src="/app.js"></script>
+  <script>
+    let chartInstance = null;
+    let storyData = null;
+
+    (async function() {
+      const user = await getUser();
+      renderHeader(user);
+
+      const id = new URLSearchParams(location.search).get('id');
+      if (!id) { location.href = '/'; return; }
+
+      document.getElementById('back-link').innerHTML = '<a class="back" href="/story.html?id=' + id + '">&larr; Back to Story</a>';
+
+      try {
+        storyData = await api('GET', 'stories/' + id);
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>';
+        return;
+      }
+
+      if (!storyData.isOwner) {
+        document.getElementById('content').innerHTML = '<p class="empty">You can only edit your own stories.</p>';
+        return;
+      }
+
+      renderEditor(storyData);
+    })();
+
+    function renderEditor(data) {
+      const { story, plots, scenes, turningPoints } = data;
+      const content = document.getElementById('content');
+
+      if (!plots.length || !scenes.length) {
+        content.innerHTML = '<p class="empty">Add at least one plot and one scene before editing the chart.</p>';
+        return;
+      }
+
+      let html = '<h1>Chart: ' + (story.title || 'Untitled') + '</h1>';
+
+      // Live preview
+      html += '<div class="chart-container" id="chart-preview" style="height:300px"></div>';
+
+      // TP grid: rows = scenes, columns = plots
+      html += '<table class="tp-grid"><thead><tr><th>Scene \\ Plot</th>';
+      for (const p of plots) {
+        html += '<th>' + (p.title || 'Plot') + '</th>';
+      }
+      html += '</tr></thead><tbody>';
+
+      for (const scene of scenes) {
+        html += '<tr><td style="font-weight:600;text-align:left">' + (scene.title || 'Scene') + '</td>';
+        for (const plot of plots) {
+          const current = getTpType(plot.id, scene.id, turningPoints);
+          html += '<td><select data-plot="' + plot.id + '" data-scene="' + scene.id + '" onchange="updatePreview()">';
+          for (const tp of TP_TYPES) {
+            html += '<option value="' + tp + '"' + (tp === current ? ' selected' : '') + '>' + tp + '</option>';
+          }
+          html += '</select></td>';
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+
+      // Actions
+      html += '<div class="actions">';
+      html += '<button class="btn btn-primary" onclick="saveChart()">Save Chart</button>';
+      html += '<a class="btn" href="/story.html?id=' + story.id + '">Cancel</a>';
+      if (turningPoints.length) {
+        html += '<button class="btn btn-danger" onclick="clearChart()" style="margin-left:auto">Delete Chart</button>';
+      }
+      html += '</div>';
+
+      content.innerHTML = html;
+      updatePreview();
+    }
+
+    function collectTurningPoints() {
+      const tps = [];
+      document.querySelectorAll('.tp-grid select').forEach(sel => {
+        tps.push({
+          plot_id: parseInt(sel.dataset.plot),
+          scene_id: parseInt(sel.dataset.scene),
+          tp_type: sel.value
+        });
+      });
+      return tps;
+    }
+
+    function updatePreview() {
+      const tps = collectTurningPoints();
+      const container = document.getElementById('chart-preview');
+      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+      chartInstance = renderChart(container, storyData.plots, storyData.scenes, tps);
+    }
+
+    async function saveChart() {
+      const tps = collectTurningPoints();
+      await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
+      location.href = '/story.html?id=' + storyData.story.id;
+    }
+
+    async function clearChart() {
+      if (!confirm('Delete all chart data for this story?')) return;
+      await api('DELETE', 'stories/' + storyData.story.id + '/turningpoints');
+      location.href = '/story.html?id=' + storyData.story.id;
+    }
+  </script>
+</body>
+</html>

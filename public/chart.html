@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="icon" href="/favicon/favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@latest/dist/chartjs-plugin-dragdata.min.js"></script>
 </head>
 <body>
   <div class="header" id="header"></div>
@@ -52,65 +53,56 @@
       }
 
       let html = '<h1>Chart: ' + (story.title || 'Untitled') + '</h1>';
+      html += '<p class="drag-hint">Drag points up or down to change turning points</p>';
 
-      // Live preview
-      html += '<div class="chart-container" id="chart-preview" style="height:300px"></div>';
+      // Draggable chart
+      html += '<div class="chart-container" id="chart-editor" style="height:400px"></div>';
 
-      // TP grid: rows = scenes, columns = plots
-      html += '<table class="tp-grid"><thead><tr><th>Scene \\ Plot</th>';
-      for (const p of plots) {
-        html += '<th>' + (p.title || 'Plot') + '</th>';
-      }
-      html += '</tr></thead><tbody>';
-
-      for (const scene of scenes) {
-        html += '<tr><td style="font-weight:600;text-align:left">' + (scene.title || 'Scene') + '</td>';
-        for (const plot of plots) {
-          const current = getTpType(plot.id, scene.id, turningPoints);
-          html += '<td><select data-plot="' + plot.id + '" data-scene="' + scene.id + '" onchange="updatePreview()">';
-          for (const tp of TP_TYPES) {
-            html += '<option value="' + tp + '"' + (tp === current ? ' selected' : '') + '>' + tp + '</option>';
-          }
-          html += '</select></td>';
-        }
-        html += '</tr>';
-      }
-      html += '</tbody></table>';
+      // TP type legend
+      html += '<div class="tp-legend">';
+      html += '<div class="tp-legend-title">Turning Point Types</div>';
+      html += '<div class="tp-legend-items">';
+      html += '<span class="tp-tag tp-up">Success +3</span>';
+      html += '<span class="tp-tag tp-up">Accelerate +2</span>';
+      html += '<span class="tp-tag tp-up">Increase +1</span>';
+      html += '<span class="tp-tag tp-none">None 0</span>';
+      html += '<span class="tp-tag tp-down">Decrease -1</span>';
+      html += '<span class="tp-tag tp-down">Decelerate -2</span>';
+      html += '<span class="tp-tag tp-down">Failure -3</span>';
+      html += '</div></div>';
 
       // Actions
       html += '<div class="actions">';
       html += '<button class="btn btn-primary" onclick="saveChart()">Save Chart</button>';
       html += '<a class="btn" href="/story.html?id=' + story.id + '">Cancel</a>';
       if (turningPoints.length) {
-        html += '<button class="btn btn-danger" onclick="clearChart()" style="margin-left:auto">Delete Chart</button>';
+        html += '<button class="btn btn-danger" onclick="clearChart()" style="margin-left:auto">Clear Chart</button>';
       }
       html += '</div>';
 
       content.innerHTML = html;
-      updatePreview();
-    }
 
-    function collectTurningPoints() {
-      const tps = [];
-      document.querySelectorAll('.tp-grid select').forEach(sel => {
-        tps.push({
-          plot_id: parseInt(sel.dataset.plot),
-          scene_id: parseInt(sel.dataset.scene),
-          tp_type: sel.value
-        });
-      });
-      return tps;
-    }
-
-    function updatePreview() {
-      const tps = collectTurningPoints();
-      const container = document.getElementById('chart-preview');
-      if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-      chartInstance = renderChart(container, storyData.plots, storyData.scenes, tps);
+      // Render draggable chart
+      chartInstance = renderDraggableChart(
+        document.getElementById('chart-editor'),
+        plots, scenes, turningPoints
+      );
     }
 
     async function saveChart() {
-      const tps = collectTurningPoints();
+      if (!chartInstance || !chartInstance._tpMap) return;
+      const tpMap = chartInstance._tpMap;
+      const tps = [];
+      for (const plot of storyData.plots) {
+        for (const scene of storyData.scenes) {
+          const key = plot.id + '-' + scene.id;
+          tps.push({
+            plot_id: plot.id,
+            scene_id: scene.id,
+            tp_type: tpMap[key] || 'None'
+          });
+        }
+      }
       await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
       location.href = '/story.html?id=' + storyData.story.id;
     }

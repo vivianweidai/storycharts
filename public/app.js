@@ -134,6 +134,160 @@ function getTpType(plotId, sceneId, turningPoints) {
   return tp ? tp.tp_type : 'None';
 }
 
+// --- Snap logic for draggable chart ---
+
+// Given previous accumulated value, return all 7 possible {tpType, resultValue} options
+function computeSnapTargets(prevValue) {
+  const targets = [];
+  for (const tpType of TP_TYPES) {
+    let v = prevValue;
+    switch (tpType) {
+      case 'None': break;
+      case 'Increase': v += 1; break;
+      case 'Decrease': v -= 1; break;
+      case 'Accelerate': if (v < 0) v = -v; v += 2; break;
+      case 'Decelerate': if (v > 0) v = -v; v -= 2; break;
+      case 'Success': if (v < 0) v = -v; v += 3; break;
+      case 'Failure': if (v > 0) v = -v; v -= 3; break;
+    }
+    targets.push({ tpType, value: v });
+  }
+  return targets;
+}
+
+// Snap a dragged Y value to the nearest valid TP target
+function snapToNearest(draggedY, prevValue) {
+  const targets = computeSnapTargets(prevValue);
+  let best = targets[0];
+  for (const t of targets) {
+    if (Math.abs(t.value - draggedY) < Math.abs(best.value - draggedY)) best = t;
+  }
+  return best;
+}
+
+// Recompute accumulated values for one plot from a given scene index onward
+function recomputeFromIndex(plotIndex, fromSceneIndex, plots, scenes, tpMap) {
+  const plot = plots[plotIndex];
+  const data = [];
+  let value = 0;
+  for (let si = 0; si < scenes.length; si++) {
+    const key = plot.id + '-' + scenes[si].id;
+    const tpType = tpMap[key] || 'None';
+    switch (tpType) {
+      case 'Increase': value += 1; break;
+      case 'Decrease': value -= 1; break;
+      case 'Accelerate': if (value < 0) value = -value; value += 2; break;
+      case 'Decelerate': if (value > 0) value = -value; value -= 2; break;
+      case 'Success': if (value < 0) value = -value; value += 3; break;
+      case 'Failure': if (value > 0) value = -value; value -= 3; break;
+    }
+    data.push(value);
+  }
+  return data;
+}
+
+// Build a draggable chart for the editor
+function renderDraggableChart(container, plots, scenes, turningPoints, onChange) {
+  if (!plots.length || !scenes.length) {
+    container.innerHTML = '<p class="empty">Add plots and scenes to see the chart.</p>';
+    return null;
+  }
+
+  // Build mutable TP map: "plotId-sceneId" → tpType
+  const tpMap = {};
+  for (const tp of turningPoints) {
+    tpMap[tp.plot_id + '-' + tp.scene_id] = tp.tp_type;
+  }
+
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.height = 400;
+  container.appendChild(canvas);
+
+  const chartData = computeChartData(plots, scenes, turningPoints);
+
+  // Make points larger and more grab-friendly
+  for (const ds of chartData.datasets) {
+    ds.pointRadius = 8;
+    ds.pointHoverRadius = 11;
+    ds.pointHitRadius = 20;
+    ds.pointStyle = 'circle';
+  }
+
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: chartData,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 150 },
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 13 } } },
+        tooltip: {
+          callbacks: {
+            title: (items) => items[0].label,
+            label: (item) => {
+              const plot = plots[item.datasetIndex];
+              const scene = scenes[item.dataIndex];
+              const key = plot.id + '-' + scene.id;
+              const tpType = tpMap[key] || 'None';
+              return (plot.title || 'Plot') + ': ' + tpType + ' (' + item.formattedValue + ')';
+            }
+          }
+        },
+        dragData: {
+          dragX: false,
+          dragY: true,
+          onDrag: function(e, datasetIndex, index, value) {
+            // Compute previous accumulated value for snapping
+            const plot = plots[datasetIndex];
+            let prevValue = 0;
+            if (index > 0) {
+              prevValue = chart.data.datasets[datasetIndex].data[index - 1];
+            }
+            const snap = snapToNearest(value, prevValue);
+            // Update tpMap
+            const key = plot.id + '-' + scenes[index].id;
+            tpMap[key] = snap.tpType;
+            // Recompute this plot's data from this point onward
+            const newData = recomputeFromIndex(datasetIndex, index, plots, scenes, tpMap);
+            chart.data.datasets[datasetIndex].data = newData;
+            // Return the snapped value for the dragged point
+            return snap.value;
+          },
+          onDragEnd: function(e, datasetIndex, index, value) {
+            // Final snap
+            const plot = plots[datasetIndex];
+            let prevValue = 0;
+            if (index > 0) {
+              prevValue = chart.data.datasets[datasetIndex].data[index - 1];
+            }
+            const snap = snapToNearest(value, prevValue);
+            const key = plot.id + '-' + scenes[index].id;
+            tpMap[key] = snap.tpType;
+            const newData = recomputeFromIndex(datasetIndex, index, plots, scenes, tpMap);
+            chart.data.datasets[datasetIndex].data = newData;
+            chart.update('none');
+            if (onChange) onChange(tpMap);
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Scenes' } },
+        y: {
+          title: { display: true, text: 'Plot Progression' },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    }
+  });
+
+  // Store tpMap on the chart for external access
+  chart._tpMap = tpMap;
+  return chart;
+}
+
 // --- Modal helpers ---
 
 function showModal(title, fields, onSave, onDelete) {

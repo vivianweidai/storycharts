@@ -58,7 +58,7 @@ function computeChartData(plots, scenes, turningPoints) {
       data,
       borderColor: PLOT_COLORS[pi % PLOT_COLORS.length],
       backgroundColor: PLOT_COLORS[pi % PLOT_COLORS.length],
-      tension: 0.3,
+      tension: 0,
       pointRadius: 5,
       pointHoverRadius: 7,
       fill: false

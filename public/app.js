@@ -125,8 +125,11 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           min: X_MIN - 1,
           max: X_MAX + 1,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: '#d0d0d0', lineWidth: 0.5, tickLength: 0, drawTicks: false, borderDash: [2, 3] },
-          border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
+          grid: {
+            color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; },
+            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; }
+          },
+          border: { display: true, color: '#c8c8c8', width: 1.5 }
         },
         y: {
           type: 'linear',
@@ -135,8 +138,11 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           beginAtZero: false,
           grace: 0,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: '#d0d0d0', lineWidth: 0.5, tickLength: 0, drawTicks: false, borderDash: [2, 3] },
-          border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
+          grid: {
+            color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; },
+            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; }
+          },
+          border: { display: true, color: '#c8c8c8', width: 1.5 }
         }
       }
     }

@@ -210,60 +210,34 @@
         return { x: t.clientX - rect.left, y: t.clientY - rect.top };
       }
 
-      function findPoint(pos) {
-        var best = null, bestDist = 25;
-        for (var di = 0; di < plots.length; di++) {
-          var meta = chart.getDatasetMeta(di);
-          for (var pi = 0; pi < meta.data.length; pi++) {
-            var el = meta.data[pi];
-            // Scale chart coords to CSS coords for distance check
-            var canvasRect = canvas.getBoundingClientRect();
-            var ex = el.x * canvasRect.width / canvas.width;
-            var ey = el.y * canvasRect.height / canvas.height;
-            var dx = ex - pos.x, dy = ey - pos.y;
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < bestDist) {
-              bestDist = dist;
-              best = { di: di, pi: pi };
-            }
-          }
-        }
-        return best;
-      }
-
-      function findLine(pos) {
-        // Check if pos is near any line segment
-        var canvasRect = canvas.getBoundingClientRect();
-        for (var di = 0; di < plots.length; di++) {
-          var meta = chart.getDatasetMeta(di);
-          for (var pi = 0; pi < meta.data.length - 1; pi++) {
-            var a = meta.data[pi], b = meta.data[pi + 1];
-            var ax = a.x * canvasRect.width / canvas.width;
-            var ay = a.y * canvasRect.height / canvas.height;
-            var bx = b.x * canvasRect.width / canvas.width;
-            var by = b.y * canvasRect.height / canvas.height;
-            var dist = distToSegment(pos.x, pos.y, ax, ay, bx, by);
-            if (dist < 15) return { di: di };
+      // Use native event for Chart.js hit detection (handles all DPR/coord math)
+      function findPointNative(e) {
+        var elements = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+        for (var i = 0; i < elements.length; i++) {
+          if (elements[i].datasetIndex < plots.length) {
+            return { di: elements[i].datasetIndex, pi: elements[i].index };
           }
         }
         return null;
       }
 
-      function distToSegment(px, py, ax, ay, bx, by) {
-        var dx = bx - ax, dy = by - ay;
-        var t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
-        t = Math.max(0, Math.min(1, t));
-        var nx = ax + t * dx, ny = ay + t * dy;
-        return Math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny));
+      function findLineNative(e) {
+        var elements = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false, axis: 'xy' }, false);
+        for (var i = 0; i < elements.length; i++) {
+          if (elements[i].datasetIndex < plots.length) {
+            return { di: elements[i].datasetIndex };
+          }
+        }
+        return null;
       }
 
       function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-      function pixelToValue(pos) {
-        // Convert CSS coords to chart internal pixel coords
-        var canvasRect = canvas.getBoundingClientRect();
-        var ix = pos.x * canvas.width / canvasRect.width;
-        var iy = pos.y * canvas.height / canvasRect.height;
+      function pixelToValue(cssX, cssY) {
+        // Convert CSS-relative coords to chart internal pixel coords
+        var dpr = window.devicePixelRatio || 1;
+        var ix = cssX * dpr;
+        var iy = cssY * dpr;
         var xScale = chart.scales.x, yScale = chart.scales.y;
         return {
           x: clamp(xScale.getValueForPixel(ix), 0, 100),
@@ -272,8 +246,7 @@
       }
 
       function onStart(e) {
-        var pos = getPos(e);
-        var hit = findPoint(pos);
+        var hit = findPointNative(e);
         if (!hit) return;
         e.preventDefault();
         isDragging = true;
@@ -283,6 +256,7 @@
         selectedDsi = hit.di;
         selectedIdx = hit.pi;
         applySelection();
+        var pos = getPos(e);
         drawHaloAtPos(pos, dragDsi);
       }
 
@@ -291,7 +265,7 @@
         e.preventDefault();
         didMove = true;
         var pos = getPos(e);
-        var val = pixelToValue(pos);
+        var val = pixelToValue(pos.x, pos.y);
         chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
         chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
         applySelection();
@@ -303,8 +277,7 @@
         isDragging = false;
         if (didMove) {
           chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
-          // Find the new index of the dragged point after sort
-          selectedIdx = -1; // we'll just keep plot selected
+          selectedIdx = -1;
         }
         applySelection();
         showHaloOnSelected();
@@ -315,23 +288,17 @@
 
       // Tap on empty area or line
       canvas.addEventListener('click', function(e) {
-        if (didMove) return; // was a drag, not a tap
-        var pos = getPos(e);
-        var hit = findPoint(pos);
-        if (hit) {
-          // Point tap — already handled by onStart
-          return;
-        }
-        var lineHit = findLine(pos);
+        if (didMove) { didMove = false; return; }
+        var hit = findPointNative(e);
+        if (hit) return; // already handled by onStart
+        var lineHit = findLineNative(e);
         if (lineHit) {
-          // Line tap — select entire plot
           selectedDsi = lineHit.di;
           selectedIdx = -1;
           applySelection();
           haloEl.style.display = 'none';
           return;
         }
-        // Tap on empty — deselect all
         selectedDsi = -1;
         selectedIdx = -1;
         applySelection();

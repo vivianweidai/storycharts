@@ -225,10 +225,10 @@ function renderPreviewChart(container, plots, chartPoints, styleNum) {
     options: {
       responsive: true, maintainAspectRatio: false,
       animation: false,
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, dragData: false },
       scales: {
-        x: { type: 'linear', min: X_MIN - 1, max: X_MAX + 1, ticks: { display: false, stepSize: 1 }, ...style.x },
-        y: { type: 'linear', min: Y_MIN - 1, max: Y_MAX + 1, beginAtZero: false, grace: 0, ticks: { display: false, stepSize: 1 }, ...style.y }
+        x: { type: 'linear', min: X_MIN - 1, max: X_MAX + 1, ticks: { display: false, stepSize: 1 }, grid: style.x.grid, border: style.x.border },
+        y: { type: 'linear', min: Y_MIN - 1, max: Y_MAX + 1, beginAtZero: false, grace: 0, ticks: { display: false, stepSize: 1 }, grid: style.y.grid, border: style.y.border }
       }
     }
   });

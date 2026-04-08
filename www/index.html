@@ -9,8 +9,8 @@
   <style>
     .chart-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
     }
     .chart-card {
       border: 1.5px solid #d1d9e0;
@@ -34,18 +34,16 @@
       background: #eef4fb;
     }
     .chart-card-info {
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-top: 1px solid #eee;
     }
     .chart-card-title {
       font-weight: 600;
-      font-size: 0.95em;
+      font-size: 0.85em;
       color: #1f2328;
-    }
-    .chart-card-meta {
-      font-size: 0.75em;
-      color: #656d76;
-      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .divider {
       border: none;
@@ -56,6 +54,33 @@
       text-align: center;
       padding-bottom: 20px;
     }
+    .create-glow {
+      display: inline-block;
+      padding: 14px 36px;
+      font-size: 1em;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      background: rgba(9,105,218,0.85);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 50px;
+      cursor: pointer;
+      text-shadow: 0 0 7px rgba(255,255,255,0.4), 0 0 20px rgba(140,180,255,0.3);
+      box-shadow: 0 0 12px rgba(9,105,218,0.3), 0 0 30px rgba(9,105,218,0.15);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      transition: box-shadow 0.3s, background 0.3s;
+      letter-spacing: 0.02em;
+    }
+    .create-glow:hover {
+      background: rgba(9,105,218,1);
+      box-shadow: 0 0 18px rgba(9,105,218,0.5), 0 0 40px rgba(9,105,218,0.25);
+    }
+    @keyframes glow-pulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(9,105,218,0.3), 0 0 30px rgba(9,105,218,0.15); }
+      50% { box-shadow: 0 0 18px rgba(9,105,218,0.45), 0 0 40px rgba(9,105,218,0.25); }
+    }
+    .create-glow { animation: glow-pulse 3s ease-in-out infinite; }
+    .create-glow:hover { animation: none; }
   </style>
 </head>
 <body style="max-width:900px">
@@ -74,7 +99,7 @@
       canvas.height = rect.height * dpr;
       var ctx = canvas.getContext('2d');
       ctx.scale(dpr, dpr);
-      var W = rect.width, H = rect.height, PAD = 8;
+      var W = rect.width, H = rect.height, PAD = 6;
 
       // Grid
       ctx.strokeStyle = 'rgba(70,120,180,0.1)';
@@ -109,7 +134,7 @@
         ctx.fillStyle = color;
         for (var i = 0; i < pts.length; i++) {
           ctx.beginPath();
-          ctx.arc(PAD + (pts[i].x / 10000) * (W - 2 * PAD), PAD + (1 - pts[i].y / 10000) * (H - 2 * PAD), 3, 0, Math.PI * 2);
+          ctx.arc(PAD + (pts[i].x / 10000) * (W - 2 * PAD), PAD + (1 - pts[i].y / 10000) * (H - 2 * PAD), 2.5, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -127,20 +152,15 @@
       if (!stories.length && !user) {
         html += '<p class="empty">No story charts yet. <a href="/api/auth/login">Login</a> to create one.</p>';
       } else if (!stories.length) {
-        html += '<p class="empty">No story charts yet. Create your first one!</p>';
+        html += '<p class="empty">No story charts yet.</p>';
       } else {
         html += '<div class="chart-grid" id="chart-grid">';
         for (var i = 0; i < stories.length; i++) {
           var s = stories[i];
-          var plotCount = s.plots ? s.plots.length : 0;
           html += '<a class="chart-card" href="/story.html?id=' + s.id + '">' +
                     '<canvas id="mini-' + s.id + '"></canvas>' +
                     '<div class="chart-card-info">' +
                       '<div class="chart-card-title">' + (s.title || 'Untitled') + '</div>' +
-                      '<div class="chart-card-meta">' +
-                        plotCount + ' plot' + (plotCount !== 1 ? 's' : '') +
-                        (user && s.userid === user.userid ? ' &middot; yours' : '') +
-                      '</div>' +
                     '</div>' +
                   '</a>';
         }
@@ -150,7 +170,7 @@
       if (user) {
         html += '<hr class="divider">';
         html += '<div class="create-section">' +
-                  '<button class="btn btn-primary btn-add" id="create-btn">Create Story Chart</button>' +
+                  '<button class="create-glow" id="create-btn">Create Story Chart</button>' +
                 '</div>';
       }
 

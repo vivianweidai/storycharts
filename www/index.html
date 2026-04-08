@@ -5,69 +5,179 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Story Charts</title>
   <link rel="stylesheet" href="/app.css">
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" href="/favicon/favicon.ico">
+  <style>
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .chart-card {
+      border: 1.5px solid #d1d9e0;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .chart-card:hover {
+      border-color: #0969da;
+      box-shadow: 0 2px 12px rgba(9,105,218,0.12);
+      text-decoration: none;
+    }
+    .chart-card canvas {
+      width: 100%;
+      aspect-ratio: 1.618 / 1;
+      display: block;
+      background: #eef4fb;
+    }
+    .chart-card-info {
+      padding: 10px 12px;
+      border-top: 1px solid #eee;
+    }
+    .chart-card-title {
+      font-weight: 600;
+      font-size: 0.95em;
+      color: #1f2328;
+    }
+    .chart-card-meta {
+      font-size: 0.75em;
+      color: #656d76;
+      margin-top: 2px;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #d1d9e0;
+      margin: 32px 0 24px;
+    }
+    .create-section {
+      text-align: center;
+      padding-bottom: 20px;
+    }
+  </style>
 </head>
-<body>
+<body style="max-width:900px">
   <div class="header" id="header"></div>
   <div id="content"><p class="empty">Loading...</p></div>
 
   <script src="/app.js"></script>
   <script>
+    var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
+
+    function drawMiniChart(canvas, plots) {
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) return;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height, PAD = 8;
+
+      // Grid
+      ctx.strokeStyle = 'rgba(70,120,180,0.1)';
+      ctx.lineWidth = 0.5;
+      for (var i = 0; i <= 10; i++) {
+        var x = PAD + (i / 10) * (W - 2 * PAD);
+        ctx.beginPath(); ctx.moveTo(x, PAD); ctx.lineTo(x, H - PAD); ctx.stroke();
+      }
+      for (var i = 0; i <= 10; i++) {
+        var y = PAD + (i / 10) * (H - 2 * PAD);
+        ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+      }
+
+      // Lines + points
+      for (var d = 0; d < plots.length; d++) {
+        var pts = plots[d].points;
+        if (!pts || pts.length === 0) continue;
+        pts.sort(function(a, b) { return a.x - b.x; });
+        var color = COLORS[d % COLORS.length];
+
+        if (pts.length > 1) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(PAD + (pts[0].x / 10000) * (W - 2 * PAD), PAD + (1 - pts[0].y / 10000) * (H - 2 * PAD));
+          for (var i = 1; i < pts.length; i++) {
+            ctx.lineTo(PAD + (pts[i].x / 10000) * (W - 2 * PAD), PAD + (1 - pts[i].y / 10000) * (H - 2 * PAD));
+          }
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = color;
+        for (var i = 0; i < pts.length; i++) {
+          ctx.beginPath();
+          ctx.arc(PAD + (pts[i].x / 10000) * (W - 2 * PAD), PAD + (1 - pts[i].y / 10000) * (H - 2 * PAD), 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
     (async function() {
-      const user = await getUser();
+      var user = await getUser();
       renderHeader(user);
 
-      const stories = await api('GET', 'stories');
-      const content = document.getElementById('content');
+      var stories = await api('GET', 'stories');
+      var content = document.getElementById('content');
+
+      var html = '';
 
       if (!stories.length && !user) {
-        content.innerHTML = '<p class="empty">No stories yet. <a href="/api/auth/login">Login</a> to create one.</p>';
-        return;
-      }
-
-      let html = '';
-      if (user) {
-        html += '<div class="actions"><button class="btn btn-primary" id="create-btn">Create Story</button>';
-        html += '<button class="btn btn-danger btn-sm" id="reset-btn" style="margin-left:auto">Delete All</button></div>';
-      }
-
-      if (!stories.length) {
-        html += '<p class="empty">No stories yet. Create your first one!</p>';
+        html += '<p class="empty">No story charts yet. <a href="/api/auth/login">Login</a> to create one.</p>';
+      } else if (!stories.length) {
+        html += '<p class="empty">No story charts yet. Create your first one!</p>';
       } else {
-        html += '<ul class="story-list">';
-        for (const s of stories) {
-          html += '<li class="story-card"><h3><a href="/story.html?id=' + s.id + '">' + (s.title || 'Untitled') + '</a>';
-          if (user && s.userid === user.userid) html += ' <span class="badge badge-own">yours</span>';
-          html += '</h3></li>';
+        html += '<div class="chart-grid" id="chart-grid">';
+        for (var i = 0; i < stories.length; i++) {
+          var s = stories[i];
+          var plotCount = s.plots ? s.plots.length : 0;
+          html += '<a class="chart-card" href="/story.html?id=' + s.id + '">' +
+                    '<canvas id="mini-' + s.id + '"></canvas>' +
+                    '<div class="chart-card-info">' +
+                      '<div class="chart-card-title">' + (s.title || 'Untitled') + '</div>' +
+                      '<div class="chart-card-meta">' +
+                        plotCount + ' plot' + (plotCount !== 1 ? 's' : '') +
+                        (user && s.userid === user.userid ? ' &middot; yours' : '') +
+                      '</div>' +
+                    '</div>' +
+                  '</a>';
         }
-        html += '</ul>';
+        html += '</div>';
+      }
+
+      if (user) {
+        html += '<hr class="divider">';
+        html += '<div class="create-section">' +
+                  '<button class="btn btn-primary btn-add" id="create-btn">Create Story Chart</button>' +
+                '</div>';
       }
 
       content.innerHTML = html;
 
-      const createBtn = document.getElementById('create-btn');
+      // Draw mini charts after layout
+      requestAnimationFrame(function() {
+        for (var i = 0; i < stories.length; i++) {
+          var c = document.getElementById('mini-' + stories[i].id);
+          if (c) drawMiniChart(c, stories[i].plots || []);
+        }
+      });
+
+      // Create button opens modal
+      var createBtn = document.getElementById('create-btn');
       if (createBtn) {
-        createBtn.onclick = async () => {
-          createBtn.disabled = true;
-          createBtn.textContent = 'Creating...';
-          try {
-            const result = await api('POST', 'stories', {
-              title: 'My Story'
+        createBtn.onclick = function() {
+          showModal('Create Story Chart', [
+            { label: 'Title', name: 'title', value: '' }
+          ], function(data) {
+            var title = data.title.trim() || 'Untitled';
+            api('POST', 'stories', { title: title }).then(function(result) {
+              window.location.href = '/story.html?id=' + result.id;
+            }).catch(function(e) {
+              alert('Failed to create story: ' + e.message);
             });
-            window.location.href = '/story.html?id=' + result.id;
-          } catch (e) {
-            alert('Failed to create story: ' + e.message);
-            createBtn.disabled = false;
-            createBtn.textContent = 'Create Story';
-          }
-        };
-      }
-      const resetBtn = document.getElementById('reset-btn');
-      if (resetBtn) {
-        resetBtn.onclick = async () => {
-          if (!confirm('Delete ALL stories? This cannot be undone.')) return;
-          await api('POST', 'admin/reset');
-          location.reload();
+          });
         };
       }
     })();

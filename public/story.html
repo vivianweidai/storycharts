@@ -85,14 +85,11 @@
           var ds = chart.data.datasets[d];
           var len = ds.data.length;
           var color = COLORS[d % COLORS.length];
-          var isSel = (selDi === d);
-          var hasSel = (selDi >= 0);
-          ds.borderColor = hasSel && !isSel ? color + '40' : color;
-          ds.backgroundColor = hasSel && !isSel ? color + '40' : color;
-          ds.borderWidth = isSel ? 10 : (hasSel ? 1 : 2);
-          ds.pointRadius = new Array(len).fill(isSel ? 6 : (hasSel ? 3 : 5));
+          ds.borderColor = color;
+          ds.backgroundColor = color;
+          ds.borderWidth = (selDi === d && selPi < 0) ? 4 : 2;
+          ds.pointRadius = new Array(len).fill(5);
         }
-        // Selected point: 2x
         if (selDi >= 0 && selPi >= 0 && selPi < chart.data.datasets[selDi].data.length) {
           chart.data.datasets[selDi].pointRadius[selPi] = 10;
         }

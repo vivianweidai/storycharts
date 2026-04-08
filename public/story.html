@@ -14,6 +14,8 @@
 
   <script src="/app.js"></script>
   <script>
+    const COLORS = ['#f4a6a0','#a1c9f4','#b0d9a0','#f9c784','#d4a8e8'];
+
     (async function() {
       const user = await getUser();
       renderHeader(user);
@@ -26,86 +28,45 @@
       catch (e) { document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>'; return; }
 
       const { story, plots, chartPoints, isOwner } = data;
-      const content = document.getElementById('content');
-      let html = '';
-
-      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
-      html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
-      if (isOwner) html += '<button class="btn btn-sm" id="edit-story-btn">edit</button>';
-      html += '</div>';
-
-      // 5 style previews
-      const names = ['1: Clean Minimal', '2: Blueprint', '3: Dotted', '4: Major/Minor', '5: Dark Mode'];
-      for (let i = 0; i < 5; i++) {
-        html += '<h2 style="margin:24px 0 6px;color:#656d76">Style ' + names[i] + '</h2>';
-        html += '<div id="chart-' + i + '" style="height:280px;border-radius:8px"></div>';
-      }
-
-      if (isOwner) {
-        html += '<div class="actions" style="justify-content:center;margin-top:20px">';
-        html += '<button class="btn btn-add" id="add-plot-btn">+ Add Plot</button>';
-        html += '</div>';
-      }
-
-      content.innerHTML = html;
-
-      // Style configs
-      const styles = [
-        { // 1: Clean Minimal
-          bg: '',
-          xGrid: { color: '#e8e8e8', lineWidth: 0.5 }, xBorder: { display: true, color: '#e8e8e8', width: 1 },
-          yGrid: { color: '#e8e8e8', lineWidth: 0.5 }, yBorder: { display: true, color: '#e8e8e8', width: 1 }
-        },
-        { // 2: Blueprint
-          bg: '#f0f6ff',
-          xGrid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, xBorder: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 },
-          yGrid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, yBorder: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 }
-        },
-        { // 3: Dotted
-          bg: '',
-          xGrid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, xBorder: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] },
-          yGrid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, yBorder: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
-        },
-        { // 4: Major/Minor
-          bg: '',
-          xGrid: { color: ctx => ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1.5 : 0.5 },
-          xBorder: { display: true, color: '#c8c8c8', width: 1.5 },
-          yGrid: { color: ctx => ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1.5 : 0.5 },
-          yBorder: { display: true, color: '#c8c8c8', width: 1.5 }
-        },
-        { // 5: Dark Mode
-          bg: '#1e1e2e',
-          xGrid: { color: ctx => ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1 : 0.5 },
-          xBorder: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 },
-          yGrid: { color: ctx => ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1 : 0.5 },
-          yBorder: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
-        }
-      ];
-
-      // Render all 5
       const cp = chartPoints || [];
-      for (let i = 0; i < 5; i++) {
-        const el = document.getElementById('chart-' + i);
-        if (styles[i].bg) el.style.background = styles[i].bg;
-        if (plots.length) renderChart(el, plots, cp, styles[i]);
-      }
 
-      // Buttons
-      const editBtn = document.getElementById('edit-story-btn');
-      if (editBtn) editBtn.onclick = () => {
-        showModal('Edit Story', [
-          { name: 'title', label: 'Title', type: 'text', value: story.title }
-        ], async (d) => { await api('PUT', 'stories/' + story.id, d); location.reload(); },
-        async () => { await api('DELETE', 'stories/' + story.id); location.href = '/'; });
-      };
+      document.getElementById('content').innerHTML =
+        '<h1>' + (story.title || 'Untitled') + '</h1>' +
+        '<div style="position:relative;height:400px;margin:16px 0"><canvas id="myChart"></canvas></div>' +
+        '<p style="text-align:center;color:#656d76;font-size:0.85em">Style 1: Clean Minimal</p>';
 
-      const addBtn = document.getElementById('add-plot-btn');
-      if (addBtn) addBtn.onclick = () => {
-        showModal('New Plot', [
-          { name: 'title', label: 'Title', type: 'text' },
-          { name: 'description', label: 'Description', type: 'textarea' }
-        ], async (d) => { await api('POST', 'stories/' + story.id + '/plots', d); location.reload(); });
-      };
+      // Build datasets
+      var byPlot = {};
+      cp.forEach(function(p) {
+        if (!byPlot[p.plot_id]) byPlot[p.plot_id] = [];
+        byPlot[p.plot_id].push({x: p.x_pos, y: p.y_val});
+      });
+      var datasets = plots.map(function(plot, i) {
+        var pts = byPlot[plot.id] || [];
+        pts.sort(function(a,b) { return a.x - b.x; });
+        return {
+          label: plot.title,
+          data: pts,
+          borderColor: COLORS[i % COLORS.length],
+          backgroundColor: COLORS[i % COLORS.length],
+          showLine: true, tension: 0,
+          pointRadius: 6, fill: false
+        };
+      });
+
+      new Chart(document.getElementById('myChart'), {
+        type: 'scatter',
+        data: { datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { type: 'linear', min: -1, max: 21, ticks: { display: false, stepSize: 1 }, grid: { color: '#e8e8e8', lineWidth: 0.5 }, border: { display: true, color: '#e8e8e8' } },
+            y: { type: 'linear', min: -11, max: 11, ticks: { display: false, stepSize: 1 }, grid: { color: '#e8e8e8', lineWidth: 0.5 }, border: { display: true, color: '#e8e8e8' } }
+          }
+        }
+      });
     })();
   </script>
 </body>

@@ -10,6 +10,16 @@
     @media (min-width: 600px) {
       .chart-wrap { aspect-ratio: 1.618 / 1 !important; }
     }
+    @keyframes wave {
+      0%, 100% { transform: translateY(0); }
+      20% { transform: translateY(-3px); }
+      40% { transform: translateY(0); }
+    }
+    .wave-text span {
+      display: inline-block;
+      animation: wave 0.8s ease-in-out;
+      animation-fill-mode: both;
+    }
   </style>
 </head>
 <body>
@@ -352,6 +362,7 @@
       '<div id="title-row" style="display:flex;align-items:center;gap:8px">' +
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
+        (isOwner ? '<span id="drag-hint" style="margin-left:auto;font-size:0.75em;color:#0969da;opacity:0.7">drag points to edit</span>' : '') +
       '</div>' +
       '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
         '<div style="display:flex;gap:6px;align-items:center">' +
@@ -363,7 +374,6 @@
       '<div class="chart-wrap" style="margin-top:12px;width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
         '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
       '</div>' +
-      (isOwner ? '<div style="text-align:center;margin-top:4px;font-size:0.75em;color:#0969da">drag points to edit</div>' : '') +
       '<div id="info" style="text-align:center;margin-top:10px;min-height:3em"></div>';
 
     // Inline title edit
@@ -419,6 +429,23 @@
     window.addEventListener('mouseup', onEnd);
     window.addEventListener('touchend', onEnd);
     canvas.addEventListener('click', onClick);
+
+    // Wave effect on hint after 3s
+    if (isOwner) {
+      setTimeout(function() {
+        var hint = document.getElementById('drag-hint');
+        if (!hint) return;
+        var text = hint.textContent;
+        hint.innerHTML = '';
+        hint.classList.add('wave-text');
+        for (var i = 0; i < text.length; i++) {
+          var span = document.createElement('span');
+          span.textContent = text[i] === ' ' ? '\u00a0' : text[i];
+          span.style.animationDelay = (i * 0.04) + 's';
+          hint.appendChild(span);
+        }
+      }, 3000);
+    }
   })();
   </script>
 </body>

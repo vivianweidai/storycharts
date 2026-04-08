@@ -237,6 +237,7 @@
       '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
         '<div style="display:flex;gap:8px;align-items:center">' +
           '<input id="title-input" type="text" maxlength="' + MAX_TITLE + '" style="flex:1;font-size:1.2em;font-weight:700;padding:4px 8px;border:1.5px solid #0969da;border-radius:6px;font-family:inherit">' +
+          '<button class="btn btn-sm btn-primary" id="ok-btn">ok</button>' +
           '<button class="btn btn-sm btn-danger" id="del-btn">delete</button>' +
         '</div>' +
       '</div>' +
@@ -272,11 +273,12 @@
         }
       }
 
+      document.getElementById('ok-btn').onclick = saveTitle;
+
       titleInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); saveTitle(); }
         if (e.key === 'Escape') { titleEdit.style.display = 'none'; titleRow.style.display = 'flex'; }
       });
-      titleInput.addEventListener('blur', saveTitle);
 
       document.getElementById('del-btn').onclick = function() {
         if (confirm('Delete this story and all its data?')) {

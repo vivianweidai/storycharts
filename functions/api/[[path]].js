@@ -112,15 +112,15 @@ async function requireOwner(env, user, storyId) {
 
 async function listStories(env, user) {
   const stories = await env.DB.prepare(
-    'SELECT id, title, userid, summary FROM stories ORDER BY id DESC'
+    'SELECT id, title, userid FROM stories ORDER BY id DESC'
   ).all();
   return json(stories.results);
 }
 
 async function createStory(env, user, body) {
   const result = await env.DB.prepare(
-    'INSERT INTO stories (title, userid, email, summary) VALUES (?, ?, ?, ?)'
-  ).bind(body.title || '', user.userid, user.email, body.summary || '').run();
+    'INSERT INTO stories (title, userid, email) VALUES (?, ?, ?)'
+  ).bind(body.title || '', user.userid, user.email).run();
   const storyId = result.meta.last_row_id;
 
   // Random 2-4 plots
@@ -188,8 +188,8 @@ async function getStory(env, user, id) {
 async function updateStory(env, user, id, body) {
   await requireOwner(env, user, id);
   await env.DB.prepare(
-    'UPDATE stories SET title = ?, summary = ?, updated_at = datetime(\'now\') WHERE id = ?'
-  ).bind(body.title || '', body.summary || '', id).run();
+    'UPDATE stories SET title = ?, updated_at = datetime(\'now\') WHERE id = ?'
+  ).bind(body.title || '', id).run();
   return json({ ok: true });
 }
 

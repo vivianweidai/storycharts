@@ -67,11 +67,11 @@
 
       content.innerHTML = html;
 
-      if (plots.length && chartPoints && chartPoints.length) {
+      if (plots.length) {
         for (let i = 1; i <= 5; i++) {
           renderPreviewChart(
             document.getElementById('chart-style-' + i),
-            plots, chartPoints, i
+            plots, chartPoints || [], i
           );
         }
       }
@@ -129,10 +129,9 @@
     function editStory() {
       const s = storyData.story;
       showModal('Edit Story', [
-        { name: 'title', label: 'Title', type: 'text', value: s.title },
-        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary }
+        { name: 'title', label: 'Title', type: 'text', value: s.title }
       ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { title: data.title, summary: data.summary });
+        await api('PUT', 'stories/' + s.id, { title: data.title });
         location.reload();
       }, async () => {
         await api('DELETE', 'stories/' + s.id);

@@ -115,10 +115,10 @@
         var meta = chart.getDatasetMeta(di);
         if (!meta.data[pi]) return;
         var el = meta.data[pi];
-        // Convert from chart pixel coords to CSS coords
-        var dpr = window.devicePixelRatio || 1;
-        var hx = el.x / dpr;
-        var hy = el.y / dpr;
+        // el.x/el.y are in the chart's internal pixel space
+        // Scale to CSS coordinates of the overlay canvas
+        var hx = el.x * rect.width / canvas.width;
+        var hy = el.y * rect.height / canvas.height;
         var color = COLORS[di % COLORS.length];
         var radius = 40;
         // Outer glow

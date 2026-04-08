@@ -27,7 +27,8 @@
 
       let html = '';
       if (user) {
-        html += '<div class="actions"><button class="btn btn-primary" id="create-btn">Create Story</button></div>';
+        html += '<div class="actions"><button class="btn btn-primary" id="create-btn">Create Story</button>';
+        html += '<button class="btn btn-danger btn-sm" id="reset-btn" style="margin-left:auto">Delete All</button></div>';
       }
 
       if (!stories.length) {
@@ -59,6 +60,14 @@
             createBtn.disabled = false;
             createBtn.textContent = 'Create Story';
           }
+        };
+      }
+      const resetBtn = document.getElementById('reset-btn');
+      if (resetBtn) {
+        resetBtn.onclick = async () => {
+          if (!confirm('Delete ALL stories? This cannot be undone.')) return;
+          await api('POST', 'admin/reset');
+          location.reload();
         };
       }
     })();

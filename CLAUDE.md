@@ -10,6 +10,7 @@ Hobby project at storycharts.com.
 - **Cloudflare Pages Functions** — backend API (single catch-all Worker)
 - **Cloudflare D1** — SQLite database
 - **Cloudflare Access** — Zero Trust auth
+- **SwiftUI** — native Apple apps (iPhone, iPad, Apple Watch)
 
 ## Structure
 
@@ -24,7 +25,23 @@ storycharts/
     app.css                  # Styles
     favicon/                 # Icons
   functions/api/[[path]].js  # All API routes (single file)
+  apple/                     # Native Apple apps
+    StoryCharts.xcodeproj    # Xcode project (2 targets)
+    Shared/                  # Code shared across all Apple platforms
+      Models/                # Story, Plot, ChartPoint structs
+      API/                   # APIClient hitting storycharts.com/api
+      Views/                 # ChartView, StoryListView, StoryDetailView
+    iPhone/                  # iOS app (universal: iPhone + iPad)
+    Watch/                   # watchOS companion app (read-only charts)
 ```
+
+## Apple Apps
+
+- Team ID: CR3TXC4TRW (James Dai Limited)
+- Bundle ID: `com.jamesdai.storycharts` (iOS), `.watchkitapp` (watchOS)
+- Targets iOS 17+ and watchOS 10+
+- All platforms share models, API client, and ChartView via Shared/
+- Watch app is read-only (view stories and chart thumbnails)
 
 ## Data Model
 

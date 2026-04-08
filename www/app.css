@@ -30,12 +30,11 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 }
 .user-menu-btn:hover { background: #f6f8fa; border-color: #d1d9e0; }
 .user-menu-drop {
-  display: none !important; position: absolute; right: 0; top: 100%; margin-top: 4px;
+  position: absolute; right: 0; top: 100%; margin-top: 4px;
   background: #fff; border: 1px solid #d1d9e0; border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1); min-width: 120px; z-index: 50;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1); min-width: 120px; z-index: 150;
   overflow: hidden;
 }
-.user-menu-drop.open { display: block !important; }
 .user-menu-item {
   display: block; width: 100%; padding: 8px 14px; font-size: 0.85em; color: #1f2328;
   font-weight: 400; text-align: left; background: none; border: none;

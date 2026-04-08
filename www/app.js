@@ -58,9 +58,13 @@ function renderHeader(user) {
     });
     document.getElementById('logout-btn').addEventListener('click', function(e) {
       e.preventDefault();
-      document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=.storycharts.com';
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/';
-      window.location.reload();
+      document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=.storycharts.com';
+      document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=storycharts.com';
+      // Navigate to current page — if Cloudflare Access is protecting
+      // the domain, it may re-authenticate automatically via SSO
+      var here = window.location.pathname + window.location.search;
+      window.location.replace(here);
     });
     document.addEventListener('click', function() { drop.style.display = 'none'; });
   }

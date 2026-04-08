@@ -34,8 +34,8 @@
 
       document.getElementById('content').innerHTML =
         '<h1>' + (data.story.title || 'Untitled') + '</h1>' +
-        '<div id="chart-wrap" style="position:relative;width:100%;height:0;padding-bottom:100%;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
-          '<canvas id="myChart" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none"></canvas>' +
+        '<div id="chart-wrap" style="position:relative;width:100%;aspect-ratio:1;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
+          '<canvas id="myChart" style="width:100%;height:100%;display:block;touch-action:none"></canvas>' +
           '<div id="halo" style="display:none;position:absolute;width:80px;height:80px;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%)"></div>' +
         '</div>' +
         '<div id="sel-label" style="text-align:center;font-size:0.85em;color:#888;margin-top:8px;min-height:1.4em"></div>';
@@ -171,9 +171,9 @@
       function drawHaloAtPos(pos, di) {
         if (!pos || di < 0) { haloEl.style.display = 'none'; return; }
         var wrapRect = wrapEl.getBoundingClientRect();
-        var canvasRect = canvas.getBoundingClientRect();
-        var left = canvasRect.left - wrapRect.left + pos.x;
-        var top = canvasRect.top - wrapRect.top + pos.y;
+        // Use client coords relative to wrapper
+        var left = pos.cx - wrapRect.left;
+        var top = pos.cy - wrapRect.top;
         var color = COLORS[di % COLORS.length];
         haloEl.style.display = 'block';
         haloEl.style.left = left + 'px';
@@ -183,22 +183,8 @@
       }
 
       function showHaloOnSelected() {
-        if (selectedDsi < 0 || selectedIdx < 0) { haloEl.style.display = 'none'; return; }
-        var meta = chart.getDatasetMeta(selectedDsi);
-        if (!meta.data[selectedIdx]) { haloEl.style.display = 'none'; return; }
-        var el = meta.data[selectedIdx];
-        var canvasRect = canvas.getBoundingClientRect();
-        var wrapRect = wrapEl.getBoundingClientRect();
-        var scaleX = canvasRect.width / canvas.width;
-        var scaleY = canvasRect.height / canvas.height;
-        var left = canvasRect.left - wrapRect.left + el.x * scaleX;
-        var top = canvasRect.top - wrapRect.top + el.y * scaleY;
-        var color = COLORS[selectedDsi % COLORS.length];
-        haloEl.style.display = 'block';
-        haloEl.style.left = left + 'px';
-        haloEl.style.top = top + 'px';
-        haloEl.style.background = color + '18';
-        haloEl.style.border = '2.5px solid ' + color + '40';
+        // After release, just hide halo — the enlarged point is enough
+        haloEl.style.display = 'none';
       }
 
       // --- Custom drag + tap implementation ---
@@ -207,7 +193,8 @@
       function getPos(e) {
         var t = e.touches ? e.touches[0] : e;
         var rect = canvas.getBoundingClientRect();
-        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+        // Return position relative to canvas CSS box
+        return { cx: t.clientX, cy: t.clientY, x: t.clientX - rect.left, y: t.clientY - rect.top };
       }
 
       // Use native event for Chart.js hit detection (handles all DPR/coord math)

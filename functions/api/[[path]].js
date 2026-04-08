@@ -19,6 +19,17 @@ export async function onRequest(context) {
     const storySubMatch = path.match(/^\/stories\/(\d+)\/(plots|chartpoints)$/);
     const plotMatch = path.match(/^\/plots\/(\d+)$/);
 
+    // Admin: delete all stories, plots, chart_points
+    if (path === '/admin/reset' && method === 'POST') {
+      if (!user) return json({ error: 'Unauthorized' }, 401);
+      await env.DB.batch([
+        env.DB.prepare('DELETE FROM chart_points'),
+        env.DB.prepare('DELETE FROM plots'),
+        env.DB.prepare('DELETE FROM stories')
+      ]);
+      return json({ ok: true, message: 'All data deleted' });
+    }
+
     if (path === '/stories' && method === 'GET') return await listStories(env, user);
     if (path === '/stories' && method === 'POST') {
       if (!user) return json({ error: 'Unauthorized' }, 401);
@@ -77,10 +88,7 @@ async function autoMigrate(db) {
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 0, userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
     db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)"),
-    // One-time cleanup: delete old stories that have no chart_points
-    db.prepare("DELETE FROM plots WHERE story_id NOT IN (SELECT DISTINCT story_id FROM chart_points)"),
-    db.prepare("DELETE FROM stories WHERE id NOT IN (SELECT DISTINCT story_id FROM chart_points)")
+    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)")
   ]);
   migrated = true;
 }

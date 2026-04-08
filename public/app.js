@@ -122,21 +122,21 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
       scales: {
         x: {
           type: 'linear',
-          min: X_MIN,
-          max: X_MAX,
+          min: X_MIN - 1,
+          max: X_MAX + 1,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: '#f0f0f0' },
-          border: { display: false }
+          grid: { color: '#e8e8e8', lineWidth: 0.5 },
+          border: { display: true, color: '#e8e8e8', width: 1 }
         },
         y: {
           type: 'linear',
-          min: Y_MIN,
-          max: Y_MAX,
+          min: Y_MIN - 1,
+          max: Y_MAX + 1,
           beginAtZero: false,
           grace: 0,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: '#f0f0f0' },
-          border: { display: false }
+          grid: { color: '#e8e8e8', lineWidth: 0.5 },
+          border: { display: true, color: '#e8e8e8', width: 1 }
         }
       }
     }

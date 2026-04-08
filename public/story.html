@@ -101,6 +101,24 @@
         }
       });
 
+      // --- Highlight active point ---
+      function highlightPoint(di, pi) {
+        for (var d = 0; d < chart.data.datasets.length; d++) {
+          var ds = chart.data.datasets[d];
+          var len = ds.data.length;
+          ds.pointRadius = new Array(len).fill(5);
+          ds.pointBorderWidth = new Array(len).fill(2);
+          ds.pointBorderColor = new Array(len).fill(ds.borderColor);
+        }
+        if (di >= 0 && pi >= 0) {
+          var ads = chart.data.datasets[di];
+          ads.pointRadius[pi] = 10;
+          ads.pointBorderWidth[pi] = 3;
+          ads.pointBorderColor[pi] = '#fff';
+        }
+        chart.update('none');
+      }
+
       // --- Custom drag implementation ---
       var dragDsi = -1, dragIdx = -1, isDragging = false;
 
@@ -146,6 +164,7 @@
         isDragging = true;
         dragDsi = hit.di;
         dragIdx = hit.pi;
+        highlightPoint(dragDsi, dragIdx);
       }
 
       function onMove(e) {
@@ -155,15 +174,14 @@
         var val = pixelToValue(pos);
         chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
         chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
-        chart.update('none');
+        highlightPoint(dragDsi, dragIdx);
       }
 
       function onEnd(e) {
         if (!isDragging) return;
         isDragging = false;
-        // Re-sort the dragged dataset by x
         chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
-        chart.update('none');
+        highlightPoint(-1, -1);
         dragDsi = -1;
         dragIdx = -1;
         saveChart(chart);

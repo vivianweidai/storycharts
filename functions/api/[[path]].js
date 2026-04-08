@@ -98,7 +98,8 @@ async function listStories(env) {
 }
 
 async function createStory(env, user, body) {
-  const r = await env.DB.prepare('INSERT INTO stories (title, userid, email) VALUES (?, ?, ?)').bind(body.title || '', user.userid, user.email).run();
+  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 60).trim() || 'Untitled';
+  const r = await env.DB.prepare('INSERT INTO stories (title, userid, email) VALUES (?, ?, ?)').bind(title, user.userid, user.email).run();
   const sid = r.meta.last_row_id;
 
   const names = ['Internal', 'Relationship', 'External', 'Mystery'];
@@ -150,7 +151,8 @@ async function getStory(env, user, id) {
 
 async function updateStory(env, user, id, body) {
   await requireOwner(env, user, id);
-  await env.DB.prepare('UPDATE stories SET title = ? WHERE id = ?').bind(body.title || '', id).run();
+  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 60).trim() || 'Untitled';
+  await env.DB.prepare('UPDATE stories SET title = ? WHERE id = ?').bind(title, id).run();
   return json({ ok: true });
 }
 

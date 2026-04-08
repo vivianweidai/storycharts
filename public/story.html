@@ -14,6 +14,8 @@
   <script src="/app.js"></script>
   <script>
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
+  var MAX_TITLE = 60;
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points; // points: [{plot_id, x, y, label}]
   var canvas, ctx, W, H, PAD = 20;
   var selDi = -1, selPi = -1; // -1=none, selPi=-1 means plot selected
@@ -224,12 +226,62 @@
       return { plot_id: cp.plot_id, x: cp.x_pos, y: cp.y_val, label: cp.label || '' };
     });
 
+    var storyTitle = data.story.title || 'Untitled';
+    var isOwner = data.isOwner;
+
     document.getElementById('content').innerHTML =
-      '<h1>' + (data.story.title || 'Untitled') + '</h1>' +
+      '<div id="title-row" style="display:flex;align-items:center;gap:8px">' +
+        '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
+        (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' +
+                   '<button class="btn btn-sm btn-danger" id="del-btn" style="font-size:0.75em">delete</button>' : '') +
+      '</div>' +
+      '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
+        '<input id="title-input" type="text" maxlength="' + MAX_TITLE + '" style="font-size:1.2em;font-weight:700;padding:4px 8px;border:1.5px solid #0969da;border-radius:6px;width:100%;font-family:inherit">' +
+      '</div>' +
       '<div style="width:100%;aspect-ratio:1;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
         '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none"></canvas>' +
       '</div>' +
       '<div id="info" style="text-align:center;margin-top:10px;min-height:3em"></div>';
+
+    // Inline title edit
+    if (isOwner) {
+      var titleRow = document.getElementById('title-row');
+      var titleEdit = document.getElementById('title-edit');
+      var titleInput = document.getElementById('title-input');
+      var titleText = document.getElementById('title-text');
+
+      document.getElementById('edit-btn').onclick = function() {
+        titleInput.value = storyTitle;
+        titleRow.style.display = 'none';
+        titleEdit.style.display = 'block';
+        titleInput.focus();
+        titleInput.select();
+      };
+
+      function saveTitle() {
+        var v = titleInput.value.trim().slice(0, MAX_TITLE).replace(/<[^>]*>/g, '');
+        if (!v) v = 'Untitled';
+        titleEdit.style.display = 'none';
+        titleRow.style.display = 'flex';
+        if (v !== storyTitle) {
+          storyTitle = v;
+          titleText.textContent = v;
+          api('PUT', 'stories/' + storyId, { title: v });
+        }
+      }
+
+      titleInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); saveTitle(); }
+        if (e.key === 'Escape') { titleEdit.style.display = 'none'; titleRow.style.display = 'flex'; }
+      });
+      titleInput.addEventListener('blur', saveTitle);
+
+      document.getElementById('del-btn').onclick = function() {
+        if (confirm('Delete this story and all its data?')) {
+          api('DELETE', 'stories/' + storyId).then(function() { location.href = '/'; });
+        }
+      };
+    }
 
     canvas = document.getElementById('c');
     ctx = canvas.getContext('2d');

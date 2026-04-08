@@ -221,14 +221,10 @@
       function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
       function pixelToValue(cssX, cssY) {
-        // Convert CSS-relative coords to chart internal pixel coords
-        var dpr = window.devicePixelRatio || 1;
-        var ix = cssX * dpr;
-        var iy = cssY * dpr;
         var xScale = chart.scales.x, yScale = chart.scales.y;
         return {
-          x: clamp(xScale.getValueForPixel(ix), 0, 100),
-          y: clamp(yScale.getValueForPixel(iy), 0, 100)
+          x: clamp(xScale.getValueForPixel(cssX), 0, 100),
+          y: clamp(yScale.getValueForPixel(cssY), 0, 100)
         };
       }
 

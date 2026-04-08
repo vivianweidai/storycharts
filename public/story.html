@@ -143,6 +143,7 @@
 
   function onStart(e) {
     if (isDragging) return;
+    if (!isOwnerGlobal) return;
     var pos = getPos(e);
     var hit = hitPoint(pos.x, pos.y);
     if (!hit) return;

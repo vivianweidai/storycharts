@@ -125,8 +125,8 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           min: X_MIN - 1,
           max: X_MAX + 1,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 },
-          border: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 }
+          grid: { color: '#d0d0d0', lineWidth: 0.5, tickLength: 0, drawTicks: false, borderDash: [2, 3] },
+          border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
         },
         y: {
           type: 'linear',
@@ -135,8 +135,8 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           beginAtZero: false,
           grace: 0,
           ticks: { display: false, stepSize: 1 },
-          grid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 },
-          border: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 }
+          grid: { color: '#d0d0d0', lineWidth: 0.5, tickLength: 0, drawTicks: false, borderDash: [2, 3] },
+          border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
         }
       }
     }

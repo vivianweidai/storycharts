@@ -23,7 +23,7 @@ storycharts/
     story.html               # Chart editor (raw Canvas 2D)
     app.js                   # Shared: API client, modal, header
     app.css                  # Styles
-    favicon/                 # Icons
+    favicon.ico              # Site icon
   functions/api/[[path]].js  # All API routes (required name by Cloudflare)
   apple/                     # Native Apple apps
     StoryCharts.xcodeproj    # Xcode project (2 targets)

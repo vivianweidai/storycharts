@@ -13,6 +13,7 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 .header {
   display: flex; justify-content: space-between; align-items: center;
   padding-bottom: 12px; border-bottom: 1px solid #d1d9e0; margin-bottom: 20px;
+  position: relative; z-index: 100;
 }
 .header a { color: #1f2328; font-weight: 600; }
 .header .auth-btn {

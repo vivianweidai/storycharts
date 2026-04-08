@@ -79,8 +79,9 @@ async function migrate(db) {
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))"),
     db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)")
+    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '')")
   ]);
+  try { await db.prepare("ALTER TABLE chart_points ADD COLUMN label TEXT NOT NULL DEFAULT ''").run(); } catch {}
   migrated = true;
 }
 
@@ -115,14 +116,23 @@ async function createStory(env, user, body) {
     plotIds.push(pr.meta.last_row_id);
   }
 
-  const cpStmt = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)');
+  const tpLabels = {
+    Internal: ['Self-doubt', 'Realization', 'Inner peace', 'Fear strikes', 'Courage found', 'Identity crisis', 'Acceptance', 'Breakdown'],
+    Relationship: ['First meeting', 'Trust broken', 'Reconciliation', 'Betrayal', 'Deep bond', 'Argument', 'Sacrifice', 'Forgiveness'],
+    External: ['Obstacle appears', 'Small victory', 'Setback', 'Ally joins', 'Enemy revealed', 'Battle', 'Escape', 'Confrontation'],
+    Mystery: ['Clue found', 'Red herring', 'Secret revealed', 'Twist', 'Hidden truth', 'Deception', 'Discovery', 'Unmasked']
+  };
+
+  const cpStmt = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val, label) VALUES (?, ?, ?, ?, ?)');
   const batch = [];
-  for (const pid of plotIds) {
+  for (let pi = 0; pi < plotIds.length; pi++) {
     const n = 3 + Math.floor(Math.random() * 6);
+    const labels = tpLabels[names[pi]] || tpLabels.Internal;
+    const shuffled = labels.slice().sort(() => Math.random() - 0.5);
     const pts = [];
-    for (let i = 0; i < n; i++) pts.push({ x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001) });
+    for (let i = 0; i < n; i++) pts.push({ x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: shuffled[i % shuffled.length] });
     pts.sort((a, b) => a.x - b.x);
-    for (const p of pts) batch.push(cpStmt.bind(sid, pid, p.x, p.y));
+    for (const p of pts) batch.push(cpStmt.bind(sid, plotIds[pi], p.x, p.y, p.label));
   }
   if (batch.length) await env.DB.batch(batch);
   return json({ id: sid }, 201);
@@ -182,10 +192,10 @@ async function deletePlot(env, user, id) {
 async function saveChartPoints(env, user, storyId, body) {
   await requireOwner(env, user, storyId);
   const del = env.DB.prepare('DELETE FROM chart_points WHERE story_id = ?').bind(storyId);
-  const ins = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)');
+  const ins = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val, label) VALUES (?, ?, ?, ?, ?)');
   const batch = [del];
   for (const cp of (body.points || [])) {
-    batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val)))));
+    batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), cp.label || ''));
   }
   await env.DB.batch(batch);
   return json({ ok: true });

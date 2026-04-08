@@ -14,26 +14,22 @@
   <script src="/app.js"></script>
   <script>
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
-  var storyId, plots, points; // points: [{plot_id, x, y}] in 0-10000
+  var storyId, plots, points; // points: [{plot_id, x, y, label}]
   var canvas, ctx, W, H, PAD = 20;
-  var selDi = -1, selPi = -1;
+  var selDi = -1, selPi = -1; // -1=none, selPi=-1 means plot selected
   var dragPt = null, isDragging = false, didMove = false;
 
-  // Convert 0-10000 data coords to canvas pixel coords
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
-  // Canvas pixel coords to 0-10000 data coords
   function fromX(px) { return Math.max(0, Math.min(10000, Math.round(((px - PAD) / (W - 2 * PAD)) * 10000))); }
   function fromY(py) { return Math.max(0, Math.min(10000, Math.round((1 - (py - PAD) / (H - 2 * PAD)) * 10000))); }
 
-  // Group points by plot index
   function grouped() {
     var g = [];
     for (var i = 0; i < plots.length; i++) g.push([]);
     for (var i = 0; i < points.length; i++) {
-      var p = points[i];
       for (var d = 0; d < plots.length; d++) {
-        if (plots[d].id === p.plot_id) { g[d].push(p); break; }
+        if (plots[d].id === points[i].plot_id) { g[d].push(points[i]); break; }
       }
     }
     for (var d = 0; d < g.length; d++) g[d].sort(function(a,b){ return a.x - b.x; });
@@ -43,8 +39,7 @@
   function draw() {
     var dpr = window.devicePixelRatio || 1;
     var rect = canvas.getBoundingClientRect();
-    W = rect.width * dpr; H = rect.height * dpr;
-    canvas.width = W; canvas.height = H;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
     W = rect.width; H = rect.height;
 
@@ -62,43 +57,70 @@
     }
 
     var g = grouped();
-    // Draw lines
+
+    // Halo on selected point (drawn first, behind everything)
+    if (selDi >= 0 && selPi >= 0 && g[selDi] && g[selDi][selPi]) {
+      var hp = g[selDi][selPi];
+      var color = COLORS[selDi % COLORS.length];
+      ctx.fillStyle = color + '15';
+      ctx.beginPath(); ctx.arc(toX(hp.x), toY(hp.y), 22, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = color + '40'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(toX(hp.x), toY(hp.y), 22, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Lines
     for (var d = 0; d < g.length; d++) {
       var pts = g[d]; if (pts.length < 2) continue;
-      var isSelPlot = (selDi === d && selPi < 0);
       ctx.strokeStyle = COLORS[d % COLORS.length];
-      ctx.lineWidth = isSelPlot ? 4 : 2;
+      ctx.lineWidth = (selDi === d && selPi < 0) ? 4 : 2;
       ctx.beginPath();
       ctx.moveTo(toX(pts[0].x), toY(pts[0].y));
       for (var i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y));
       ctx.stroke();
     }
-    // Draw points
+
+    // Points (constant size 5px)
     for (var d = 0; d < g.length; d++) {
-      var pts = g[d];
-      for (var i = 0; i < pts.length; i++) {
-        var isSel = (selDi === d && selPi === i);
-        var r = isSel ? 8 : 4;
+      for (var i = 0; i < g[d].length; i++) {
         ctx.fillStyle = COLORS[d % COLORS.length];
         ctx.beginPath();
-        ctx.arc(toX(pts[i].x), toY(pts[i].y), r, 0, Math.PI * 2);
+        ctx.arc(toX(g[d][i].x), toY(g[d][i].y), 5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
   }
 
-  // Hit test: find point within radius
-  function hitTest(cx, cy) {
+  // Hit test: point first, then line
+  function hitPoint(cx, cy) {
     var g = grouped();
-    var best = null, bestD = 20; // CSS pixel threshold
+    var best = null, bestD = 22;
     for (var d = 0; d < g.length; d++) {
       for (var i = 0; i < g[d].length; i++) {
         var dx = toX(g[d][i].x) - cx, dy = toY(g[d][i].y) - cy;
         var dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < bestD) { bestD = dist; best = { di: d, pi: i }; }
+        if (dist < bestD) { bestD = dist; best = { di: d, pi: i, pt: g[d][i] }; }
       }
     }
     return best;
+  }
+
+  function hitLine(cx, cy) {
+    var g = grouped();
+    for (var d = 0; d < g.length; d++) {
+      var pts = g[d];
+      for (var i = 0; i < pts.length - 1; i++) {
+        var ax = toX(pts[i].x), ay = toY(pts[i].y);
+        var bx = toX(pts[i+1].x), by = toY(pts[i+1].y);
+        var dx = bx-ax, dy = by-ay;
+        var len2 = dx*dx + dy*dy;
+        if (len2 === 0) continue;
+        var t = Math.max(0, Math.min(1, ((cx-ax)*dx + (cy-ay)*dy) / len2));
+        var px = ax + t*dx, py = ay + t*dy;
+        var dist = Math.sqrt((cx-px)*(cx-px) + (cy-py)*(cy-py));
+        if (dist < 12) return { di: d };
+      }
+    }
+    return null;
   }
 
   function getPos(e) {
@@ -110,14 +132,13 @@
   function onStart(e) {
     if (isDragging) return;
     var pos = getPos(e);
-    var hit = hitTest(pos.x, pos.y);
+    var hit = hitPoint(pos.x, pos.y);
     if (!hit) return;
     e.preventDefault();
     isDragging = true; didMove = false;
-    var g = grouped();
-    dragPt = g[hit.di][hit.pi]; // direct reference to the point object
+    dragPt = hit.pt;
     selDi = hit.di; selPi = hit.pi;
-    draw(); updateLabel();
+    draw(); updateInfo();
   }
 
   function onMove(e) {
@@ -125,7 +146,7 @@
     e.preventDefault(); didMove = true;
     var pos = getPos(e);
     dragPt.x = fromX(pos.x); dragPt.y = fromY(pos.y);
-    draw(); updateLabel();
+    draw(); updateInfo();
   }
 
   function onEnd() {
@@ -133,7 +154,7 @@
     isDragging = false;
     if (didMove) {
       selDi = -1; selPi = -1;
-      draw(); updateLabel();
+      draw(); updateInfo();
       savePoints();
     }
     dragPt = null;
@@ -142,31 +163,41 @@
   function onClick(e) {
     if (didMove) { didMove = false; return; }
     var pos = getPos(e);
-    var hit = hitTest(pos.x, pos.y);
-    if (hit) return; // handled by onStart
+    // Point hit already handled by onStart
+    if (hitPoint(pos.x, pos.y)) return;
+    // Try line hit
+    var lh = hitLine(pos.x, pos.y);
+    if (lh) {
+      selDi = lh.di; selPi = -1;
+      draw(); updateInfo();
+      return;
+    }
+    // Empty — deselect
     selDi = -1; selPi = -1;
-    draw(); updateLabel();
+    draw(); updateInfo();
   }
 
-  function updateLabel() {
-    var el = document.getElementById('label');
-    if (selDi < 0) { el.textContent = ''; return; }
+  function updateInfo() {
+    var el = document.getElementById('info');
+    if (selDi < 0) { el.innerHTML = ''; return; }
     var color = COLORS[selDi % COLORS.length];
-    var name = plots[selDi].title || 'Plot';
-    el.style.color = color;
+    var plot = plots[selDi];
     if (selPi >= 0) {
       var g = grouped();
       var pt = g[selDi][selPi];
-      el.textContent = name + '  (' + pt.x + ', ' + pt.y + ')';
+      el.innerHTML = '<div style="color:' + color + ';font-weight:600">' + (plot.title || 'Plot') + '</div>' +
+        '<div style="font-size:0.9em">' + (pt.label || 'Turning point') + '</div>' +
+        '<div style="font-size:0.8em;color:#888">(' + pt.x + ', ' + pt.y + ')</div>';
     } else {
-      el.textContent = name;
+      el.innerHTML = '<div style="color:' + color + ';font-weight:600">' + (plot.title || 'Plot') + '</div>' +
+        '<div style="font-size:0.85em;color:#666">' + (plot.description || '') + '</div>';
     }
   }
 
   function savePoints() {
     var out = [];
     for (var i = 0; i < points.length; i++) {
-      out.push({ plot_id: points[i].plot_id, x_pos: points[i].x, y_val: points[i].y });
+      out.push({ plot_id: points[i].plot_id, x_pos: points[i].x, y_val: points[i].y, label: points[i].label || '' });
     }
     api('POST', 'stories/' + storyId + '/chartpoints', { points: out });
   }
@@ -184,14 +215,16 @@
 
     storyId = data.story.id;
     plots = data.plots;
-    points = (data.chartPoints || []).map(function(cp) { return { plot_id: cp.plot_id, x: cp.x_pos, y: cp.y_val }; });
+    points = (data.chartPoints || []).map(function(cp) {
+      return { plot_id: cp.plot_id, x: cp.x_pos, y: cp.y_val, label: cp.label || '' };
+    });
 
     document.getElementById('content').innerHTML =
       '<h1>' + (data.story.title || 'Untitled') + '</h1>' +
       '<div style="width:100%;aspect-ratio:1;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
         '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none"></canvas>' +
       '</div>' +
-      '<div id="label" style="text-align:center;font-size:0.85em;color:#888;margin-top:8px;min-height:1.4em"></div>';
+      '<div id="info" style="text-align:center;margin-top:10px;min-height:3em"></div>';
 
     canvas = document.getElementById('c');
     ctx = canvas.getContext('2d');

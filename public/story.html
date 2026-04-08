@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="icon" href="/favicon/favicon.ico">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@latest/dist/chartjs-plugin-dragdata.min.js"></script>
 </head>
 <body>
   <div class="header" id="header"></div>
@@ -15,9 +14,6 @@
 
   <script src="/app.js"></script>
   <script>
-    let storyData = null;
-    let chartInstance = null;
-
     (async function() {
       const user = await getUser();
       renderHeader(user);
@@ -25,145 +21,92 @@
       const id = new URLSearchParams(location.search).get('id');
       if (!id) { location.href = '/'; return; }
 
-      try {
-        storyData = await api('GET', 'stories/' + id);
-      } catch (e) {
-        document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>';
-        return;
-      }
+      let data;
+      try { data = await api('GET', 'stories/' + id); }
+      catch (e) { document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>'; return; }
 
-      render(storyData, user);
-    })();
-
-    function render(data, user) {
       const { story, plots, chartPoints, isOwner } = data;
       const content = document.getElementById('content');
       let html = '';
 
-      // Title row
       html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
-      if (isOwner) {
-        html += '<button class="btn btn-sm" onclick="editStory()">edit</button>';
-      }
+      if (isOwner) html += '<button class="btn btn-sm" id="edit-story-btn">edit</button>';
       html += '</div>';
 
-      // All 5 style previews
-      const styleNames = ['Style 1: Clean Minimal', 'Style 2: Blueprint', 'Style 3: Dotted', 'Style 4: Major/Minor', 'Style 5: Dark Mode'];
-      for (let i = 1; i <= 5; i++) {
-        html += '<h2 style="margin:20px 0 4px;color:#656d76">' + styleNames[i-1] + '</h2>';
-        html += '<div class="chart-preview" id="chart-style-' + i + '" style="height:300px"></div>';
+      // 5 style previews
+      const names = ['1: Clean Minimal', '2: Blueprint', '3: Dotted', '4: Major/Minor', '5: Dark Mode'];
+      for (let i = 0; i < 5; i++) {
+        html += '<h2 style="margin:24px 0 6px;color:#656d76">Style ' + names[i] + '</h2>';
+        html += '<div id="chart-' + i + '" style="height:280px;border-radius:8px"></div>';
       }
 
-      // Context panel (hidden)
-      html += '<div id="context-panel" class="context-panel" style="display:none"></div>';
-
-      // Add buttons
       if (isOwner) {
         html += '<div class="actions" style="justify-content:center;margin-top:20px">';
-        html += '<button class="btn btn-add" onclick="addPlot()">+ Add Plot</button>';
+        html += '<button class="btn btn-add" id="add-plot-btn">+ Add Plot</button>';
         html += '</div>';
       }
 
       content.innerHTML = html;
 
-      if (plots.length) {
-        for (let i = 1; i <= 5; i++) {
-          renderPreviewChart(
-            document.getElementById('chart-style-' + i),
-            plots, chartPoints || [], i
-          );
+      // Style configs
+      const styles = [
+        { // 1: Clean Minimal
+          bg: '',
+          xGrid: { color: '#e8e8e8', lineWidth: 0.5 }, xBorder: { display: true, color: '#e8e8e8', width: 1 },
+          yGrid: { color: '#e8e8e8', lineWidth: 0.5 }, yBorder: { display: true, color: '#e8e8e8', width: 1 }
+        },
+        { // 2: Blueprint
+          bg: '#f0f6ff',
+          xGrid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, xBorder: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 },
+          yGrid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, yBorder: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 }
+        },
+        { // 3: Dotted
+          bg: '',
+          xGrid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, xBorder: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] },
+          yGrid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, yBorder: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] }
+        },
+        { // 4: Major/Minor
+          bg: '',
+          xGrid: { color: ctx => ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1.5 : 0.5 },
+          xBorder: { display: true, color: '#c8c8c8', width: 1.5 },
+          yGrid: { color: ctx => ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1.5 : 0.5 },
+          yBorder: { display: true, color: '#c8c8c8', width: 1.5 }
+        },
+        { // 5: Dark Mode
+          bg: '#1e1e2e',
+          xGrid: { color: ctx => ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1 : 0.5 },
+          xBorder: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 },
+          yGrid: { color: ctx => ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)', lineWidth: ctx => ctx.tick.value % 5 === 0 ? 1 : 0.5 },
+          yBorder: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
         }
+      ];
+
+      // Render all 5
+      const cp = chartPoints || [];
+      for (let i = 0; i < 5; i++) {
+        const el = document.getElementById('chart-' + i);
+        if (styles[i].bg) el.style.background = styles[i].bg;
+        if (plots.length) renderChart(el, plots, cp, styles[i]);
       }
-    }
 
-    // --- Context panel ---
+      // Buttons
+      const editBtn = document.getElementById('edit-story-btn');
+      if (editBtn) editBtn.onclick = () => {
+        showModal('Edit Story', [
+          { name: 'title', label: 'Title', type: 'text', value: story.title }
+        ], async (d) => { await api('PUT', 'stories/' + story.id, d); location.reload(); },
+        async () => { await api('DELETE', 'stories/' + story.id); location.href = '/'; });
+      };
 
-    function showContextPanel(datasetIndex, pointIndex) {
-      const { plots, isOwner } = storyData;
-      const plot = plots[datasetIndex];
-      const pt = chartInstance.data.datasets[datasetIndex].data[pointIndex];
-      const color = PLOT_COLORS[datasetIndex % PLOT_COLORS.length];
-
-      const panel = document.getElementById('context-panel');
-      let html = '<div class="context-inner">';
-      html += '<div class="context-row">';
-      html += '<span class="context-plot" style="color:' + color + '">' + (plot.title || 'Plot') + '</span>';
-      html += '<span class="context-value">x=' + pt.x + '  y=' + pt.y + '</span>';
-      html += '</div>';
-      if (isOwner) {
-        html += '<div class="context-actions">';
-        html += '<button class="btn btn-sm" onclick="editPlot(' + plot.id + ')">edit plot</button>';
-        html += '<button class="btn btn-sm context-close" onclick="hideContextPanel()">close</button>';
-        html += '</div>';
-      }
-      if (plot.description) {
-        html += '<div class="context-details">' + plot.description + '</div>';
-      }
-      html += '</div>';
-      panel.innerHTML = html;
-      panel.style.display = 'block';
-    }
-
-    function hideContextPanel() {
-      document.getElementById('context-panel').style.display = 'none';
-    }
-
-    // --- Chart auto-save ---
-
-    async function autoSaveChart() {
-      if (!chartInstance) return;
-      const points = [];
-      const plots = storyData.plots;
-      for (let di = 0; di < plots.length; di++) {
-        const data = chartInstance.data.datasets[di].data;
-        for (const pt of data) {
-          points.push({ plot_id: plots[di].id, x_pos: pt.x, y_val: pt.y });
-        }
-      }
-      await api('POST', 'stories/' + storyData.story.id + '/chartpoints', { points });
-    }
-
-    // --- Story CRUD ---
-
-    function editStory() {
-      const s = storyData.story;
-      showModal('Edit Story', [
-        { name: 'title', label: 'Title', type: 'text', value: s.title }
-      ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { title: data.title });
-        location.reload();
-      }, async () => {
-        await api('DELETE', 'stories/' + s.id);
-        location.href = '/';
-      });
-    }
-
-    // --- Plot CRUD ---
-
-    function addPlot() {
-      showModal('New Plot', [
-        { name: 'title', label: 'Title', type: 'text' },
-        { name: 'description', label: 'Description', type: 'textarea' }
-      ], async (data) => {
-        await api('POST', 'stories/' + storyData.story.id + '/plots', data);
-        location.reload();
-      });
-    }
-
-    function editPlot(plotId) {
-      const p = storyData.plots.find(x => x.id === plotId);
-      showModal('Edit Plot', [
-        { name: 'title', label: 'Title', type: 'text', value: p.title },
-        { name: 'description', label: 'Description', type: 'textarea', value: p.description }
-      ], async (data) => {
-        await api('PUT', 'plots/' + plotId, data);
-        location.reload();
-      }, async () => {
-        await api('DELETE', 'plots/' + plotId);
-        location.reload();
-      });
-    }
+      const addBtn = document.getElementById('add-plot-btn');
+      if (addBtn) addBtn.onclick = () => {
+        showModal('New Plot', [
+          { name: 'title', label: 'Title', type: 'text' },
+          { name: 'description', label: 'Description', type: 'textarea' }
+        ], async (d) => { await api('POST', 'stories/' + story.id + '/plots', d); location.reload(); });
+      };
+    })();
   </script>
 </body>
 </html>

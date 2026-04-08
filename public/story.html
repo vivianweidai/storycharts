@@ -91,7 +91,7 @@
           ds.pointRadius = new Array(len).fill(5);
         }
         if (selDi >= 0 && selPi >= 0 && selPi < chart.data.datasets[selDi].data.length) {
-          chart.data.datasets[selDi].pointRadius[selPi] = 10;
+          chart.data.datasets[selDi].pointRadius[selPi] = 12;
         }
         chart.update('none');
         // Label
@@ -110,7 +110,7 @@
 
       // --- Hit detection ---
       function findHit(e) {
-        var els = chart.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false);
+        var els = chart.getElementsAtEventForMode(e, 'point', { intersect: true }, false);
         for (var i = 0; i < els.length; i++) {
           if (els[i].datasetIndex < plots.length) return { di: els[i].datasetIndex, pi: els[i].index };
         }
@@ -155,7 +155,7 @@
         isDragging = false;
         if (didMove) {
           chart.data.datasets[dragDi].data.sort(function(a,b){ return a.x - b.x; });
-          selPi = -1; // keep plot selected, lose point after sort
+          selDi = -1; selPi = -1;
           applyStyle();
           saveChart();
         }
@@ -164,9 +164,8 @@
 
       canvas.addEventListener('click', function(e) {
         if (didMove) { didMove = false; return; }
-        var hit = findHit(e);
-        if (hit) return; // handled by onStart
-        // Tap empty — deselect
+        if (findHit(e)) return; // point tap handled by onStart
+        // Tap anywhere else — deselect
         selDi = -1; selPi = -1;
         applyStyle();
       });

@@ -56,7 +56,7 @@
           borderColor: COLORS[pi % COLORS.length],
           backgroundColor: COLORS[pi % COLORS.length],
           showLine: true, tension: 0,
-          pointRadius: 5, pointHitRadius: 20,
+          pointHitRadius: 20,
           borderWidth: 2, fill: false
         });
       }
@@ -84,14 +84,18 @@
         for (var d = 0; d < plots.length; d++) {
           var ds = chart.data.datasets[d];
           var len = ds.data.length;
-          var color = COLORS[d % COLORS.length];
-          ds.borderColor = color;
-          ds.backgroundColor = color;
+          ds.borderColor = COLORS[d % COLORS.length];
+          ds.backgroundColor = COLORS[d % COLORS.length];
           ds.borderWidth = (selDi === d && selPi < 0) ? 4 : 2;
-          ds.pointRadius = new Array(len).fill(5);
+          var radii = [];
+          for (var i = 0; i < len; i++) radii.push(5);
+          ds.pointRadius = radii;
         }
-        if (selDi >= 0 && selPi >= 0 && selPi < chart.data.datasets[selDi].data.length) {
-          chart.data.datasets[selDi].pointRadius[selPi] = 12;
+        if (selDi >= 0 && selPi >= 0) {
+          var sds = chart.data.datasets[selDi];
+          if (sds && selPi < sds.data.length) {
+            sds.pointRadius[selPi] = 14;
+          }
         }
         chart.update('none');
         // Label

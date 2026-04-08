@@ -15,6 +15,7 @@
   <script src="/app.js"></script>
   <script>
     const COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
+    var storyId, plots;
 
     (async function() {
       var user = await getUser();
@@ -27,17 +28,17 @@
       try { data = await api('GET', 'stories/' + id); }
       catch (e) { document.getElementById('content').innerHTML = '<p class="empty">' + e.message + '</p>'; return; }
 
-      var story = data.story;
-      var plots = data.plots;
+      storyId = data.story.id;
+      plots = data.plots;
       var cp = data.chartPoints || [];
 
       document.getElementById('content').innerHTML =
-        '<h1>' + (story.title || 'Untitled') + '</h1>' +
-        '<div style="position:relative;width:100%;height:0;padding-bottom:100%;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
-          '<canvas id="myChart" style="position:absolute;top:0;left:0;width:100%;height:100%"></canvas>' +
+        '<h1>' + (data.story.title || 'Untitled') + '</h1>' +
+        '<div id="chart-wrap" style="position:relative;width:100%;height:0;padding-bottom:100%;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
+          '<canvas id="myChart" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none"></canvas>' +
         '</div>';
 
-      // Build datasets — x_pos and y_val are 0-10000, plot as percentage (0-100)
+      // Build datasets — 0-10000 stored, display as 0-100%
       var byPlot = {};
       for (var i = 0; i < cp.length; i++) {
         var p = cp[i];
@@ -57,14 +58,15 @@
           showLine: true,
           tension: 0,
           pointRadius: 5,
+          pointHitRadius: 20,
           pointStyle: 'circle',
           borderWidth: 2,
           fill: false
         });
       }
 
-      var ctx = document.getElementById('myChart').getContext('2d');
-      new Chart(ctx, {
+      var canvas = document.getElementById('myChart');
+      var chart = new Chart(canvas, {
         type: 'scatter',
         data: { datasets: datasets },
         options: {
@@ -73,29 +75,20 @@
           aspectRatio: 1,
           layout: { padding: 16 },
           clip: false,
+          animation: false,
           plugins: {
             legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: function(item) {
-                  return item.dataset.label + ': (' + item.raw.x.toFixed(2) + '%, ' + item.raw.y.toFixed(2) + '%)';
-                }
-              }
-            }
+            tooltip: { enabled: false }
           },
           scales: {
             x: {
-              type: 'linear',
-              min: 0,
-              max: 100,
+              type: 'linear', min: 0, max: 100,
               ticks: { display: false, stepSize: 5 },
               grid: { color: 'rgba(70,120,180,0.15)', lineWidth: 0.5, drawTicks: false },
               border: { display: false }
             },
             y: {
-              type: 'linear',
-              min: 0,
-              max: 100,
+              type: 'linear', min: 0, max: 100,
               ticks: { display: false, stepSize: 5 },
               grid: {
                 color: function(ctx) { return ctx.tick.value === 50 ? 'rgba(70,120,180,0.4)' : 'rgba(70,120,180,0.15)'; },
@@ -107,7 +100,97 @@
           }
         }
       });
+
+      // --- Custom drag implementation ---
+      var dragDsi = -1, dragIdx = -1, isDragging = false;
+
+      function getPos(e) {
+        var t = e.touches ? e.touches[0] : e;
+        var rect = canvas.getBoundingClientRect();
+        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      }
+
+      function findPoint(pos) {
+        // Check all points, find nearest within hit radius
+        var best = null, bestDist = 25; // pixel threshold
+        for (var di = 0; di < chart.data.datasets.length; di++) {
+          var meta = chart.getDatasetMeta(di);
+          for (var pi = 0; pi < meta.data.length; pi++) {
+            var el = meta.data[pi];
+            var dx = el.x - pos.x, dy = el.y - pos.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = { di: di, pi: pi };
+            }
+          }
+        }
+        return best;
+      }
+
+      function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+      function pixelToValue(pos) {
+        var xScale = chart.scales.x, yScale = chart.scales.y;
+        return {
+          x: clamp(xScale.getValueForPixel(pos.x), 0, 100),
+          y: clamp(yScale.getValueForPixel(pos.y), 0, 100)
+        };
+      }
+
+      function onStart(e) {
+        var pos = getPos(e);
+        var hit = findPoint(pos);
+        if (!hit) return;
+        e.preventDefault();
+        isDragging = true;
+        dragDsi = hit.di;
+        dragIdx = hit.pi;
+      }
+
+      function onMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        var pos = getPos(e);
+        var val = pixelToValue(pos);
+        chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
+        chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
+        chart.update('none');
+      }
+
+      function onEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        // Re-sort the dragged dataset by x
+        chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
+        chart.update('none');
+        dragDsi = -1;
+        dragIdx = -1;
+        saveChart(chart);
+      }
+
+      canvas.addEventListener('mousedown', onStart);
+      canvas.addEventListener('touchstart', onStart, { passive: false });
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchend', onEnd);
     })();
+
+    async function saveChart(chart) {
+      var points = [];
+      for (var di = 0; di < plots.length; di++) {
+        var data = chart.data.datasets[di].data;
+        for (var j = 0; j < data.length; j++) {
+          points.push({
+            plot_id: plots[di].id,
+            x_pos: Math.round(data[j].x * 100),
+            y_val: Math.round(data[j].y * 100)
+          });
+        }
+      }
+      await api('POST', 'stories/' + storyId + '/chartpoints', { points: points });
+    }
   </script>
 </body>
 </html>

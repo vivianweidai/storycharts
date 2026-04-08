@@ -36,11 +36,11 @@
     })();
 
     function render(data, user) {
-      const { story, plots, scenes, turningPoints, isOwner } = data;
+      const { story, plots, chartPoints, isOwner } = data;
       const content = document.getElementById('content');
       let html = '';
 
-      // Title row with edit (includes delete)
+      // Title row
       html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       html += '<h1 style="margin:0">' + (story.title || 'Untitled') + '</h1>';
       if (isOwner) {
@@ -50,75 +50,66 @@
 
       // Chart area
       html += '<div class="chart-container" id="chart-area" style="height:400px;margin:16px 0">';
-      if (!plots.length && !scenes.length) {
-        html += '<p class="empty">Add plots and scenes to build your chart.</p>';
+      if (!plots.length) {
+        html += '<p class="empty">Add a plot to build your chart.</p>';
       }
       html += '</div>';
 
-      // Context panel (hidden initially, shown on point tap)
+      // Context panel (hidden)
       html += '<div id="context-panel" class="context-panel" style="display:none"></div>';
 
       // Add buttons
       if (isOwner) {
         html += '<div class="actions" style="justify-content:center">';
         html += '<button class="btn btn-add" onclick="addPlot()">+ Add Plot</button>';
-        html += '<button class="btn btn-add" onclick="addScene()">+ Add Scene</button>';
         html += '</div>';
       }
 
       content.innerHTML = html;
 
-      // Render the draggable chart if we have plots and scenes
-      if (plots.length && scenes.length) {
+      if (plots.length) {
         chartInstance = renderDraggableChart(
           document.getElementById('chart-area'),
-          plots, scenes, turningPoints,
+          plots, chartPoints || [],
           () => autoSaveChart()
         );
 
         // Click handler for context panel
-        chartInstance.options.onClick = function(e) {
-          const points = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
-          if (points.length) {
-            const pt = points[0];
-            showContextPanel(pt.datasetIndex, pt.index);
-          } else {
-            hideContextPanel();
-          }
-        };
+        if (chartInstance) {
+          chartInstance.options.onClick = function(e) {
+            const points = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+            if (points.length) {
+              showContextPanel(points[0].datasetIndex, points[0].index);
+            } else {
+              hideContextPanel();
+            }
+          };
+        }
       }
     }
 
     // --- Context panel ---
 
-    function showContextPanel(datasetIndex, sceneIndex) {
-      const { plots, scenes, turningPoints, isOwner } = storyData;
+    function showContextPanel(datasetIndex, pointIndex) {
+      const { plots, isOwner } = storyData;
       const plot = plots[datasetIndex];
-      const scene = scenes[sceneIndex];
-      const key = plot.id + '-' + scene.id;
-      const value = chartInstance._tpMap[key] != null ? chartInstance._tpMap[key] : 0;
+      const pt = chartInstance.data.datasets[datasetIndex].data[pointIndex];
       const color = PLOT_COLORS[datasetIndex % PLOT_COLORS.length];
 
       const panel = document.getElementById('context-panel');
       let html = '<div class="context-inner">';
       html += '<div class="context-row">';
       html += '<span class="context-plot" style="color:' + color + '">' + (plot.title || 'Plot') + '</span>';
-      html += '<span class="context-sep">&times;</span>';
-      html += '<span class="context-scene">' + (scene.title || 'Scene') + '</span>';
-      html += '<span class="context-value">= ' + value + '</span>';
+      html += '<span class="context-value">x=' + pt.x + '  y=' + pt.y + '</span>';
       html += '</div>';
       if (isOwner) {
         html += '<div class="context-actions">';
         html += '<button class="btn btn-sm" onclick="editPlot(' + plot.id + ')">edit plot</button>';
-        html += '<button class="btn btn-sm" onclick="editScene(' + scene.id + ')">edit scene</button>';
         html += '<button class="btn btn-sm context-close" onclick="hideContextPanel()">close</button>';
         html += '</div>';
       }
-      if (plot.description || scene.description) {
-        html += '<div class="context-details">';
-        if (plot.description) html += '<div><strong style="color:' + color + '">Plot:</strong> ' + plot.description + '</div>';
-        if (scene.description) html += '<div><strong>Scene:</strong> ' + scene.description + '</div>';
-        html += '</div>';
+      if (plot.description) {
+        html += '<div class="context-details">' + plot.description + '</div>';
       }
       html += '</div>';
       panel.innerHTML = html;
@@ -132,20 +123,16 @@
     // --- Chart auto-save ---
 
     async function autoSaveChart() {
-      if (!chartInstance || !chartInstance._tpMap) return;
-      const tpMap = chartInstance._tpMap;
-      const tps = [];
-      for (const plot of storyData.plots) {
-        for (const scene of storyData.scenes) {
-          const key = plot.id + '-' + scene.id;
-          tps.push({
-            plot_id: plot.id,
-            scene_id: scene.id,
-            tp_type: String(tpMap[key] != null ? tpMap[key] : 0)
-          });
+      if (!chartInstance) return;
+      const points = [];
+      const plots = storyData.plots;
+      for (let di = 0; di < plots.length; di++) {
+        const data = chartInstance.data.datasets[di].data;
+        for (const pt of data) {
+          points.push({ plot_id: plots[di].id, x_pos: pt.x, y_val: pt.y });
         }
       }
-      await api('POST', 'stories/' + storyData.story.id + '/turningpoints', { turningPoints: tps });
+      await api('POST', 'stories/' + storyData.story.id + '/chartpoints', { points });
     }
 
     // --- Story CRUD ---
@@ -186,32 +173,6 @@
         location.reload();
       }, async () => {
         await api('DELETE', 'plots/' + plotId);
-        location.reload();
-      });
-    }
-
-    // --- Scene CRUD ---
-
-    function addScene() {
-      showModal('New Scene', [
-        { name: 'title', label: 'Title', type: 'text' },
-        { name: 'description', label: 'Description', type: 'textarea' }
-      ], async (data) => {
-        await api('POST', 'stories/' + storyData.story.id + '/scenes', data);
-        location.reload();
-      });
-    }
-
-    function editScene(sceneId) {
-      const s = storyData.scenes.find(x => x.id === sceneId);
-      showModal('Edit Scene', [
-        { name: 'title', label: 'Title', type: 'text', value: s.title },
-        { name: 'description', label: 'Description', type: 'textarea', value: s.description }
-      ], async (data) => {
-        await api('PUT', 'scenes/' + sceneId, data);
-        location.reload();
-      }, async () => {
-        await api('DELETE', 'scenes/' + sceneId);
         location.reload();
       });
     }

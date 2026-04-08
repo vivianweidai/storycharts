@@ -1,6 +1,4 @@
 // StoryCharts API — single catch-all Worker
-// Auth: Cloudflare Access protects /api/auth/*, sets CF_Authorization cookie domain-wide.
-// Worker reads that cookie on all paths to identify the user.
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -8,25 +6,18 @@ export async function onRequest(context) {
   const path = url.pathname.replace(/^\/api/, '');
   const method = request.method;
 
-  // Enable foreign keys and auto-migrate
   await env.DB.exec('PRAGMA foreign_keys = ON');
   await autoMigrate(env.DB);
 
-  // Auth: read CF_Authorization cookie (set by Cloudflare Access after login),
-  // or Cf-Access-Authenticated-User-Email header (on Access-protected paths),
-  // or X-Dev-User header (local dev only)
   const user = getUser(request);
 
   try {
-    // Login endpoint — protected by Cloudflare Access, just redirects home after auth
     if (path === '/auth/login') return Response.redirect(url.origin + '/', 302);
     if (path === '/auth/me') return json(user);
 
-    // --- Story routes ---
     const storyMatch = path.match(/^\/stories\/(\d+)$/);
-    const storySubMatch = path.match(/^\/stories\/(\d+)\/(plots|scenes|order|turningpoints)$/);
+    const storySubMatch = path.match(/^\/stories\/(\d+)\/(plots|chartpoints)$/);
     const plotMatch = path.match(/^\/plots\/(\d+)$/);
-    const sceneMatch = path.match(/^\/scenes\/(\d+)$/);
 
     if (path === '/stories' && method === 'GET') return await listStories(env, user);
     if (path === '/stories' && method === 'POST') {
@@ -57,34 +48,10 @@ export async function onRequest(context) {
       return await deletePlot(env, user, plotMatch[1]);
     }
 
-    // --- Scene routes ---
-    if (storySubMatch && storySubMatch[2] === 'scenes' && method === 'POST') {
+    // --- Chart points ---
+    if (storySubMatch && storySubMatch[2] === 'chartpoints' && method === 'POST') {
       if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await createScene(env, user, storySubMatch[1], await request.json());
-    }
-    if (sceneMatch && method === 'PUT') {
-      if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await updateScene(env, user, sceneMatch[1], await request.json());
-    }
-    if (sceneMatch && method === 'DELETE') {
-      if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await deleteScene(env, user, sceneMatch[1]);
-    }
-
-    // --- Order route ---
-    if (storySubMatch && storySubMatch[2] === 'order' && method === 'POST') {
-      if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await updateOrder(env, user, storySubMatch[1], await request.json());
-    }
-
-    // --- Turning point routes ---
-    if (storySubMatch && storySubMatch[2] === 'turningpoints' && method === 'POST') {
-      if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await saveTurningPoints(env, user, storySubMatch[1], await request.json());
-    }
-    if (storySubMatch && storySubMatch[2] === 'turningpoints' && method === 'DELETE') {
-      if (!user) return json({ error: 'Unauthorized' }, 401);
-      return await clearTurningPoints(env, user, storySubMatch[1]);
+      return await saveChartPoints(env, user, storySubMatch[1], await request.json());
     }
 
     return json({ error: 'Not found' }, 404);
@@ -108,31 +75,26 @@ let migrated = false;
 async function autoMigrate(db) {
   if (migrated) return;
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 1, userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 0, userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
     db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS scenes (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS turning_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE, tp_type TEXT NOT NULL DEFAULT 'None', UNIQUE(plot_id, scene_id))")
+    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)")
   ]);
   migrated = true;
 }
 
 function getUser(request) {
-  // 1. Cf-Access-Authenticated-User-Email header (on Access-protected paths)
   const headerEmail = request.headers.get('Cf-Access-Authenticated-User-Email');
   if (headerEmail) return { userid: headerEmail, email: headerEmail };
 
-  // 2. CF_Authorization cookie (set domain-wide after Access login)
   const cookie = request.headers.get('Cookie') || '';
   const match = cookie.match(/CF_Authorization=([^;]+)/);
   if (match) {
     try {
-      // Decode JWT payload (no verification needed — cookie is set by Cloudflare's edge)
       const payload = JSON.parse(atob(match[1].split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
       if (payload.email) return { userid: payload.email, email: payload.email };
     } catch {}
   }
 
-  // 3. X-Dev-User header (local development only)
   const devUser = request.headers.get('X-Dev-User');
   if (devUser) return { userid: devUser, email: devUser };
 
@@ -157,52 +119,48 @@ async function listStories(env, user) {
 
 async function createStory(env, user, body) {
   const result = await env.DB.prepare(
-    'INSERT INTO stories (title, private, userid, email, summary) VALUES (?, 0, ?, ?, ?)'
+    'INSERT INTO stories (title, userid, email, summary) VALUES (?, ?, ?, ?)'
   ).bind(body.title || '', user.userid, user.email, body.summary || '').run();
   const storyId = result.meta.last_row_id;
 
-  // Auto-populate with 3 default plots and 3 scenes
-  const plotTemplates = [
-    { title: 'Internal', description: 'The protagonist\'s inner journey — fears, doubts, growth, and self-discovery.' },
-    { title: 'Relationship', description: 'How key relationships evolve — trust, conflict, bonding, and betrayal.' },
-    { title: 'External', description: 'The outer conflict — obstacles, antagonists, and the main goal.' }
+  // Random 2-4 plots
+  const plotNames = ['Internal', 'Relationship', 'External', 'Mystery'];
+  const plotDescs = [
+    'The protagonist\'s inner journey — fears, doubts, growth, and self-discovery.',
+    'How key relationships evolve — trust, conflict, bonding, and betrayal.',
+    'The outer conflict — obstacles, antagonists, and the main goal.',
+    'Hidden elements — secrets, twists, and revelations that reshape the story.'
   ];
-  const sceneTemplates = [
-    { title: 'Beginning', description: 'Establish the world, characters, and stakes. The inciting incident sets things in motion.' },
-    { title: 'Middle', description: 'Rising tension and complications. Characters are tested and alliances shift.' },
-    { title: 'End', description: 'The climax and resolution. Conflicts converge and the story reaches its turning point.' }
-  ];
+  const numPlots = 2 + Math.floor(Math.random() * 3); // 2, 3, or 4
 
   const plotInsert = env.DB.prepare(
     'INSERT INTO plots (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)'
   );
-  const sceneInsert = env.DB.prepare(
-    'INSERT INTO scenes (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)'
-  );
-
-  // Create plots
-  const plotResults = [];
-  for (let i = 0; i < plotTemplates.length; i++) {
-    const r = await plotInsert.bind(storyId, plotTemplates[i].title, plotTemplates[i].description, i + 1).run();
-    plotResults.push(r.meta.last_row_id);
+  const plotIds = [];
+  for (let i = 0; i < numPlots; i++) {
+    const r = await plotInsert.bind(storyId, plotNames[i], plotDescs[i], i + 1).run();
+    plotIds.push(r.meta.last_row_id);
   }
 
-  // Create scenes
-  const sceneResults = [];
-  for (let i = 0; i < sceneTemplates.length; i++) {
-    const r = await sceneInsert.bind(storyId, sceneTemplates[i].title, sceneTemplates[i].description, i + 1).run();
-    sceneResults.push(r.meta.last_row_id);
-  }
-
-  // Generate random turning point values (-10 to +10)
-  const tpInsert = env.DB.prepare(
-    'INSERT INTO turning_points (story_id, plot_id, scene_id, tp_type) VALUES (?, ?, ?, ?)'
+  // For each plot, generate 3-8 random turning points
+  const cpInsert = env.DB.prepare(
+    'INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)'
   );
   const batch = [];
-  for (const plotId of plotResults) {
-    for (const sceneId of sceneResults) {
-      const value = Math.floor(Math.random() * 21) - 10;
-      batch.push(tpInsert.bind(storyId, plotId, sceneId, String(value)));
+  for (const plotId of plotIds) {
+    const numTPs = 3 + Math.floor(Math.random() * 6); // 3 to 8
+    // Pick unique random x positions from 0-20
+    const allX = Array.from({ length: 21 }, (_, i) => i);
+    const xPositions = [];
+    for (let i = 0; i < numTPs; i++) {
+      const idx = Math.floor(Math.random() * allX.length);
+      xPositions.push(allX.splice(idx, 1)[0]);
+    }
+    xPositions.sort((a, b) => a - b);
+
+    for (const x of xPositions) {
+      const y = Math.floor(Math.random() * 21) - 10; // -10 to +10
+      batch.push(cpInsert.bind(storyId, plotId, x, y));
     }
   }
   if (batch.length) await env.DB.batch(batch);
@@ -214,17 +172,15 @@ async function getStory(env, user, id) {
   const story = await env.DB.prepare('SELECT * FROM stories WHERE id = ?').bind(id).first();
   if (!story) return json({ error: 'Not found' }, 404);
 
-  const [plots, scenes, tps] = await Promise.all([
+  const [plots, cps] = await Promise.all([
     env.DB.prepare('SELECT * FROM plots WHERE story_id = ? ORDER BY sort_order').bind(id).all(),
-    env.DB.prepare('SELECT * FROM scenes WHERE story_id = ? ORDER BY sort_order').bind(id).all(),
-    env.DB.prepare('SELECT * FROM turning_points WHERE story_id = ?').bind(id).all()
+    env.DB.prepare('SELECT * FROM chart_points WHERE story_id = ? ORDER BY plot_id, x_pos').bind(id).all()
   ]);
 
   return json({
     story,
     plots: plots.results,
-    scenes: scenes.results,
-    turningPoints: tps.results,
+    chartPoints: cps.results,
     isOwner: user && user.userid === story.userid
   });
 }
@@ -266,68 +222,28 @@ async function deletePlot(env, user, id) {
   const plot = await env.DB.prepare('SELECT story_id FROM plots WHERE id = ?').bind(id).first();
   if (!plot) return json({ error: 'Not found' }, 404);
   await requireOwner(env, user, plot.story_id);
-  await env.DB.prepare('DELETE FROM plots WHERE id = ?').bind(id).run();
+  // Delete associated chart points too
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM chart_points WHERE plot_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM plots WHERE id = ?').bind(id)
+  ]);
   return json({ ok: true });
 }
 
-// --- Scene handlers ---
+// --- Chart points handler ---
 
-async function createScene(env, user, storyId, body) {
+async function saveChartPoints(env, user, storyId, body) {
   await requireOwner(env, user, storyId);
-  const result = await env.DB.prepare(
-    'INSERT INTO scenes (story_id, title, description, sort_order) VALUES (?, ?, ?, 100)'
-  ).bind(storyId, body.title || '', body.description || '').run();
-  return json({ id: result.meta.last_row_id }, 201);
-}
-
-async function updateScene(env, user, id, body) {
-  const scene = await env.DB.prepare('SELECT story_id FROM scenes WHERE id = ?').bind(id).first();
-  if (!scene) return json({ error: 'Not found' }, 404);
-  await requireOwner(env, user, scene.story_id);
-  await env.DB.prepare('UPDATE scenes SET title = ?, description = ? WHERE id = ?')
-    .bind(body.title || '', body.description || '', id).run();
-  return json({ ok: true });
-}
-
-async function deleteScene(env, user, id) {
-  const scene = await env.DB.prepare('SELECT story_id FROM scenes WHERE id = ?').bind(id).first();
-  if (!scene) return json({ error: 'Not found' }, 404);
-  await requireOwner(env, user, scene.story_id);
-  await env.DB.prepare('DELETE FROM scenes WHERE id = ?').bind(id).run();
-  return json({ ok: true });
-}
-
-// --- Order handler ---
-
-async function updateOrder(env, user, storyId, body) {
-  await requireOwner(env, user, storyId);
-  const stmtPlot = env.DB.prepare('UPDATE plots SET sort_order = ? WHERE id = ? AND story_id = ?');
-  const stmtScene = env.DB.prepare('UPDATE scenes SET sort_order = ? WHERE id = ? AND story_id = ?');
-  const batch = [];
-  if (body.plots) body.plots.forEach((id, i) => batch.push(stmtPlot.bind(i + 1, id, storyId)));
-  if (body.scenes) body.scenes.forEach((id, i) => batch.push(stmtScene.bind(i + 1, id, storyId)));
-  if (batch.length) await env.DB.batch(batch);
-  return json({ ok: true });
-}
-
-// --- Turning point handlers ---
-
-async function saveTurningPoints(env, user, storyId, body) {
-  await requireOwner(env, user, storyId);
-  const delStmt = env.DB.prepare('DELETE FROM turning_points WHERE story_id = ?').bind(storyId);
+  const delStmt = env.DB.prepare('DELETE FROM chart_points WHERE story_id = ?').bind(storyId);
   const insStmt = env.DB.prepare(
-    'INSERT INTO turning_points (story_id, plot_id, scene_id, tp_type) VALUES (?, ?, ?, ?)'
+    'INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)'
   );
   const batch = [delStmt];
-  for (const tp of (body.turningPoints || [])) {
-    batch.push(insStmt.bind(storyId, tp.plot_id, tp.scene_id, String(tp.tp_type != null ? tp.tp_type : '0')));
+  for (const cp of (body.points || [])) {
+    const x = Math.max(0, Math.min(20, Math.round(cp.x_pos)));
+    const y = Math.max(-10, Math.min(10, Math.round(cp.y_val)));
+    batch.push(insStmt.bind(storyId, cp.plot_id, x, y));
   }
   await env.DB.batch(batch);
-  return json({ ok: true });
-}
-
-async function clearTurningPoints(env, user, storyId) {
-  await requireOwner(env, user, storyId);
-  await env.DB.prepare('DELETE FROM turning_points WHERE story_id = ?').bind(storyId).run();
   return json({ ok: true });
 }

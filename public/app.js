@@ -30,10 +30,11 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.plugins.legend.display = false;
 }
 
-// Absolute integer values: -10 to +10
-const TP_MIN = -10;
-const TP_MAX = 10;
-const TP_DEFAULT = 0;
+// Grid bounds
+const X_MIN = 0;
+const X_MAX = 20;
+const Y_MIN = -10;
+const Y_MAX = 10;
 
 // Light pastel colors — science repo preferred palette
 const PLOT_COLORS = [
@@ -41,79 +42,50 @@ const PLOT_COLORS = [
   '#f7e59a', '#c4c4c4', '#f4a6a0', '#a1c9f4', '#b0d9a0'
 ];
 
-function computeChartData(plots, scenes, turningPoints) {
-  const tpMap = {};
-  for (const tp of turningPoints) {
-    tpMap[tp.plot_id + '-' + tp.scene_id] = parseInt(tp.tp_type) || TP_DEFAULT;
-  }
-
-  const datasets = plots.map((plot, pi) => {
-    const data = scenes.map(scene => {
-      const key = plot.id + '-' + scene.id;
-      return tpMap[key] !== undefined ? tpMap[key] : TP_DEFAULT;
-    });
-
-    return {
-      label: plot.title || 'Plot ' + (pi + 1),
-      data,
-      borderColor: PLOT_COLORS[pi % PLOT_COLORS.length],
-      backgroundColor: PLOT_COLORS[pi % PLOT_COLORS.length],
-      tension: 0,
-      pointRadius: 5,
-      pointHoverRadius: 7,
-      fill: false
-    };
-  });
-
-  return {
-    labels: scenes.map(s => s.title || 'Scene'),
-    datasets
-  };
+function snapY(y) {
+  return Math.max(Y_MIN, Math.min(Y_MAX, Math.round(y)));
 }
 
-// Snap a dragged Y value to the nearest discrete step (1-20)
-function snapValue(y) {
-  return Math.max(TP_MIN, Math.min(TP_MAX, Math.round(y)));
-}
-
-// Build a draggable chart for the editor
-function renderDraggableChart(container, plots, scenes, turningPoints, onChange) {
-  if (!plots.length || !scenes.length) {
-    container.innerHTML = '<p class="empty">Add plots and scenes to see the chart.</p>';
+// Build a draggable chart on a 21x21 grid
+function renderDraggableChart(container, plots, chartPoints, onChange) {
+  if (!plots.length) {
+    container.innerHTML = '<p class="empty">Add plots to build your chart.</p>';
     return null;
   }
 
-  // Build mutable TP map: "plotId-sceneId" → integer value
-  const tpMap = {};
-  for (const tp of turningPoints) {
-    tpMap[tp.plot_id + '-' + tp.scene_id] = parseInt(tp.tp_type) || TP_DEFAULT;
+  // Group points by plot
+  const pointsByPlot = {};
+  for (const cp of chartPoints) {
+    if (!pointsByPlot[cp.plot_id]) pointsByPlot[cp.plot_id] = [];
+    pointsByPlot[cp.plot_id].push({ x: cp.x_pos, y: cp.y_val });
   }
-  // Fill defaults for any missing combinations
-  for (const plot of plots) {
-    for (const scene of scenes) {
-      const key = plot.id + '-' + scene.id;
-      if (tpMap[key] === undefined) tpMap[key] = TP_DEFAULT;
-    }
+  // Sort each plot's points by x
+  for (const pid in pointsByPlot) {
+    pointsByPlot[pid].sort((a, b) => a.x - b.x);
   }
+
+  const datasets = plots.map((plot, pi) => ({
+    label: plot.title || 'Plot ' + (pi + 1),
+    data: (pointsByPlot[plot.id] || []).map(p => ({ x: p.x, y: p.y })),
+    borderColor: PLOT_COLORS[pi % PLOT_COLORS.length],
+    backgroundColor: PLOT_COLORS[pi % PLOT_COLORS.length],
+    tension: 0,
+    pointRadius: 8,
+    pointHoverRadius: 11,
+    pointHitRadius: 20,
+    pointStyle: 'circle',
+    fill: false,
+    showLine: true
+  }));
 
   container.innerHTML = '';
   const canvas = document.createElement('canvas');
   canvas.height = 400;
   container.appendChild(canvas);
 
-  const chartData = computeChartData(plots, scenes, turningPoints);
-
-  // Make points larger and more grab-friendly
-  for (const ds of chartData.datasets) {
-    ds.pointRadius = 8;
-    ds.pointHoverRadius = 11;
-    ds.pointHitRadius = 20;
-    ds.pointStyle = 'circle';
-  }
-
   const chart = new Chart(canvas, {
-    type: 'line',
-    data: chartData,
+    type: 'scatter',
+    data: { datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -123,8 +95,10 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
         legend: { display: false },
         tooltip: {
           callbacks: {
-            title: (items) => items[0].label,
-            label: (item) => (plots[item.datasetIndex].title || 'Plot') + ': ' + item.formattedValue
+            label: (item) => {
+              const pt = item.raw;
+              return (plots[item.datasetIndex].title || 'Plot') + ': (' + pt.x + ', ' + pt.y + ')';
+            }
           }
         },
         dragData: {
@@ -132,41 +106,42 @@ function renderDraggableChart(container, plots, scenes, turningPoints, onChange)
           dragY: true,
           round: 0,
           onDrag: function(e, datasetIndex, index, value) {
-            const snapped = snapValue(value);
-            const key = plots[datasetIndex].id + '-' + scenes[index].id;
-            tpMap[key] = snapped;
-            chart.data.datasets[datasetIndex].data[index] = snapped;
+            const snapped = snapY(value);
+            chart.data.datasets[datasetIndex].data[index].y = snapped;
             chart.update('none');
             return snapped;
           },
           onDragEnd: function(e, datasetIndex, index, value) {
-            const snapped = snapValue(value);
-            const key = plots[datasetIndex].id + '-' + scenes[index].id;
-            tpMap[key] = snapped;
-            chart.data.datasets[datasetIndex].data[index] = snapped;
+            const snapped = snapY(value);
+            chart.data.datasets[datasetIndex].data[index].y = snapped;
             chart.update('none');
-            if (onChange) onChange(tpMap);
+            if (onChange) onChange();
           }
         }
       },
       scales: {
-        x: { ticks: { display: false }, title: { display: false }, grid: { display: false }, border: { display: false } },
+        x: {
+          type: 'linear',
+          min: X_MIN,
+          max: X_MAX,
+          ticks: { display: false, stepSize: 1 },
+          grid: { color: '#f0f0f0' },
+          border: { display: false }
+        },
         y: {
           type: 'linear',
-          min: -10,
-          max: 10,
+          min: Y_MIN,
+          max: Y_MAX,
           beginAtZero: false,
           grace: 0,
-          ticks: { display: false, stepSize: 2 },
-          title: { display: false },
-          grid: { color: '#e8e8e8' },
+          ticks: { display: false, stepSize: 1 },
+          grid: { color: '#f0f0f0' },
           border: { display: false }
         }
       }
     }
   });
 
-  chart._tpMap = tpMap;
   return chart;
 }
 
@@ -217,7 +192,6 @@ function showModal(title, fields, onSave, onDelete) {
     };
   }
 
-  // Focus first input
   const first = overlay.querySelector('input, textarea');
   if (first) first.focus();
 }

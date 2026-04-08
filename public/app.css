@@ -78,12 +78,6 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
 .btn-danger { color: #cf222e; border-color: #cf222e; }
 .btn-danger:hover { background: #cf222e; color: #fff; }
 .btn-sm { padding: 3px 8px; font-size: 0.8em; }
-/* Section dividers */
-.section-divider {
-  border: none;
-  border-top: 1px solid #f0f0f0;
-  margin: 20px 0 12px;
-}
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
 

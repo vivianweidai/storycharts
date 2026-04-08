@@ -17,7 +17,7 @@
   var storyId, plots, points; // points: [{plot_id, x, y}] in 0-10000
   var canvas, ctx, W, H, PAD = 20;
   var selDi = -1, selPi = -1;
-  var dragDi = -1, dragPi = -1, isDragging = false, didMove = false;
+  var dragPt = null, isDragging = false, didMove = false;
 
   // Convert 0-10000 data coords to canvas pixel coords
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
@@ -108,24 +108,23 @@
   }
 
   function onStart(e) {
+    if (isDragging) return;
     var pos = getPos(e);
     var hit = hitTest(pos.x, pos.y);
     if (!hit) return;
     e.preventDefault();
     isDragging = true; didMove = false;
-    dragDi = hit.di; dragPi = hit.pi;
+    var g = grouped();
+    dragPt = g[hit.di][hit.pi]; // direct reference to the point object
     selDi = hit.di; selPi = hit.pi;
     draw(); updateLabel();
   }
 
   function onMove(e) {
-    if (!isDragging) return;
+    if (!isDragging || !dragPt) return;
     e.preventDefault(); didMove = true;
     var pos = getPos(e);
-    var g = grouped();
-    var pt = g[dragDi][dragPi];
-    pt.x = fromX(pos.x); pt.y = fromY(pos.y);
-    selDi = dragDi; selPi = dragPi;
+    dragPt.x = fromX(pos.x); dragPt.y = fromY(pos.y);
     draw(); updateLabel();
   }
 
@@ -133,14 +132,11 @@
     if (!isDragging) return;
     isDragging = false;
     if (didMove) {
-      // Re-sort within the plot
-      var g = grouped();
-      g[dragDi].sort(function(a,b){ return a.x - b.x; });
       selDi = -1; selPi = -1;
       draw(); updateLabel();
       savePoints();
     }
-    dragDi = -1; dragPi = -1;
+    dragPt = null;
   }
 
   function onClick(e) {

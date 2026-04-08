@@ -57,7 +57,7 @@
 				D000000012 /* API */,
 				D000000013 /* Views */,
 			);
-			path = Shared;
+			path = shared;
 			sourceTree = "<group>";
 		};
 		D000000011 /* Models */ = {
@@ -65,7 +65,7 @@
 			children = (
 				B100000010 /* Story.swift */,
 			);
-			path = Models;
+			path = models;
 			sourceTree = "<group>";
 		};
 		D000000012 /* API */ = {
@@ -73,7 +73,7 @@
 			children = (
 				B100000011 /* APIClient.swift */,
 			);
-			path = API;
+			path = api;
 			sourceTree = "<group>";
 		};
 		D000000013 /* Views */ = {
@@ -83,7 +83,7 @@
 				B100000013 /* StoryListView.swift */,
 				B100000014 /* StoryDetailView.swift */,
 			);
-			path = Views;
+			path = views;
 			sourceTree = "<group>";
 		};
 		D000000020 /* iPhone */ = {
@@ -92,7 +92,7 @@
 				B100000001 /* StoryChartsApp.swift */,
 				B100000002 /* Assets.xcassets */,
 			);
-			path = iPhone;
+			path = iphone;
 			sourceTree = "<group>";
 		};
 		D000000030 /* Watch */ = {
@@ -103,7 +103,7 @@
 				B200000003 /* WatchStoryDetailView.swift */,
 				B200000004 /* Assets.xcassets */,
 			);
-			path = Watch;
+			path = watch;
 			sourceTree = "<group>";
 		};
 		D000000099 /* Products */ = {

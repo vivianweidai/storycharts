@@ -18,21 +18,21 @@ Hobby project at storycharts.com.
 storycharts/
   wrangler.toml              # Cloudflare config
   package.json               # wrangler dev dependency
-  public/                    # Static frontend
+  www/                       # Static frontend
     index.html               # Story listing + create
     story.html               # Chart editor (raw Canvas 2D)
     app.js                   # Shared: API client, modal, header
     app.css                  # Styles
     favicon/                 # Icons
-  functions/api/[[path]].js  # All API routes (single file)
+  functions/api/[[path]].js  # All API routes (required name by Cloudflare)
   apple/                     # Native Apple apps
     StoryCharts.xcodeproj    # Xcode project (2 targets)
-    Shared/                  # Code shared across all Apple platforms
-      Models/                # Story, Plot, ChartPoint structs
-      API/                   # APIClient hitting storycharts.com/api
-      Views/                 # ChartView, StoryListView, StoryDetailView
-    iPhone/                  # iOS app (universal: iPhone + iPad)
-    Watch/                   # watchOS companion app (read-only charts)
+    shared/                  # Code shared across all Apple platforms
+      models/                # Story, Plot, ChartPoint structs
+      api/                   # APIClient hitting storycharts.com/api
+      views/                 # ChartView, StoryListView, StoryDetailView
+    iphone/                  # iOS app (universal: iPhone + iPad)
+    watch/                   # watchOS companion app (read-only charts)
 ```
 
 ## Apple Apps

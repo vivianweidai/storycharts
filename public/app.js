@@ -126,10 +126,10 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           max: X_MAX + 1,
           ticks: { display: false, stepSize: 1 },
           grid: {
-            color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; },
-            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; }
+            color: function(ctx) { return ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'; },
+            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1 : 0.5; }
           },
-          border: { display: true, color: '#c8c8c8', width: 1.5 }
+          border: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
         },
         y: {
           type: 'linear',
@@ -139,10 +139,10 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
           grace: 0,
           ticks: { display: false, stepSize: 1 },
           grid: {
-            color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; },
-            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; }
+            color: function(ctx) { return ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'; },
+            lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1 : 0.5; }
           },
-          border: { display: true, color: '#c8c8c8', width: 1.5 }
+          border: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
         }
       }
     }

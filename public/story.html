@@ -58,9 +58,14 @@
 
     var g = grouped();
 
-    // Halo on selected point (drawn first, behind everything)
-    if (selDi >= 0 && selPi >= 0 && g[selDi] && g[selDi][selPi]) {
-      var hp = g[selDi][selPi];
+    // Halo on selected/dragged point (drawn first, behind everything)
+    var hp = null;
+    if (dragPt && selDi >= 0) {
+      hp = dragPt; // always track the actual dragged object
+    } else if (selDi >= 0 && selPi >= 0 && g[selDi] && g[selDi][selPi]) {
+      hp = g[selDi][selPi];
+    }
+    if (hp) {
       var color = COLORS[selDi % COLORS.length];
       ctx.fillStyle = color + '15';
       ctx.beginPath(); ctx.arc(toX(hp.x), toY(hp.y), 22, 0, Math.PI * 2); ctx.fill();

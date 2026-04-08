@@ -151,6 +151,89 @@ function renderDraggableChart(container, plots, chartPoints, onChange) {
   return chart;
 }
 
+// --- Chart style presets ---
+
+const CHART_STYLES = {
+  1: { // Clean Minimal
+    bg: '',
+    x: { grid: { color: '#e8e8e8', lineWidth: 0.5 }, border: { display: true, color: '#e8e8e8', width: 1 } },
+    y: { grid: { color: '#e8e8e8', lineWidth: 0.5 }, border: { display: true, color: '#e8e8e8', width: 1 } }
+  },
+  2: { // Blueprint
+    bg: '#f0f6ff',
+    x: { grid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, border: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 } },
+    y: { grid: { color: 'rgba(59,130,246,0.12)', lineWidth: 0.5 }, border: { display: true, color: 'rgba(59,130,246,0.25)', width: 1.5 } }
+  },
+  3: { // Dotted
+    bg: '',
+    x: { grid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] } },
+    y: { grid: { color: '#d0d0d0', lineWidth: 0.5, borderDash: [2, 3] }, border: { display: true, color: '#c0c0c0', width: 1, dash: [2, 3] } }
+  },
+  4: { // Major/Minor
+    bg: '',
+    x: {
+      grid: { color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; }, lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; } },
+      border: { display: true, color: '#c8c8c8', width: 1.5 }
+    },
+    y: {
+      grid: { color: function(ctx) { return ctx.tick.value % 5 === 0 ? '#c8c8c8' : '#efefef'; }, lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1.5 : 0.5; } },
+      border: { display: true, color: '#c8c8c8', width: 1.5 }
+    }
+  },
+  5: { // Dark
+    bg: '#1e1e2e',
+    x: {
+      grid: { color: function(ctx) { return ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'; }, lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1 : 0.5; } },
+      border: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
+    },
+    y: {
+      grid: { color: function(ctx) { return ctx.tick.value % 5 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'; }, lineWidth: function(ctx) { return ctx.tick.value % 5 === 0 ? 1 : 0.5; } },
+      border: { display: true, color: 'rgba(255,255,255,0.2)', width: 1 }
+    }
+  }
+};
+
+function renderPreviewChart(container, plots, chartPoints, styleNum) {
+  const style = CHART_STYLES[styleNum];
+  if (style.bg) {
+    container.style.background = style.bg;
+    container.style.borderRadius = '8px';
+  }
+
+  const pointsByPlot = {};
+  for (const cp of chartPoints) {
+    if (!pointsByPlot[cp.plot_id]) pointsByPlot[cp.plot_id] = [];
+    pointsByPlot[cp.plot_id].push({ x: cp.x_pos, y: cp.y_val });
+  }
+  for (const pid in pointsByPlot) pointsByPlot[pid].sort((a, b) => a.x - b.x);
+
+  const datasets = plots.map((plot, pi) => ({
+    label: plot.title || 'Plot ' + (pi + 1),
+    data: (pointsByPlot[plot.id] || []).map(p => ({ x: p.x, y: p.y })),
+    borderColor: PLOT_COLORS[pi % PLOT_COLORS.length],
+    backgroundColor: PLOT_COLORS[pi % PLOT_COLORS.length],
+    tension: 0, pointRadius: 6, pointHoverRadius: 8, pointStyle: 'circle',
+    fill: false, showLine: true
+  }));
+
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+
+  return new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { type: 'linear', min: X_MIN - 1, max: X_MAX + 1, ticks: { display: false, stepSize: 1 }, ...style.x },
+        y: { type: 'linear', min: Y_MIN - 1, max: Y_MAX + 1, beginAtZero: false, grace: 0, ticks: { display: false, stepSize: 1 }, ...style.y }
+      }
+    }
+  });
+}
+
 // --- Modal helpers ---
 
 function showModal(title, fields, onSave, onDelete) {

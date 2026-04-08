@@ -124,7 +124,8 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
 
 
 /* Chart container */
-.chart-container { margin: 16px 0; background: #1e1e2e; border-radius: 8px; }
+.chart-container { margin: 16px 0; }
+.chart-preview { margin: 4px 0 16px; border-radius: 8px; }
 
 /* Empty state */
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }

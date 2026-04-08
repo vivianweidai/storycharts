@@ -48,42 +48,31 @@
       }
       html += '</div>';
 
-      // Chart area
-      html += '<div class="chart-container" id="chart-area" style="height:400px;margin:16px 0">';
-      if (!plots.length) {
-        html += '<p class="empty">Add a plot to build your chart.</p>';
+      // All 5 style previews
+      const styleNames = ['Style 1: Clean Minimal', 'Style 2: Blueprint', 'Style 3: Dotted', 'Style 4: Major/Minor', 'Style 5: Dark Mode'];
+      for (let i = 1; i <= 5; i++) {
+        html += '<h2 style="margin:20px 0 4px;color:#656d76">' + styleNames[i-1] + '</h2>';
+        html += '<div class="chart-preview" id="chart-style-' + i + '" style="height:300px"></div>';
       }
-      html += '</div>';
 
       // Context panel (hidden)
       html += '<div id="context-panel" class="context-panel" style="display:none"></div>';
 
       // Add buttons
       if (isOwner) {
-        html += '<div class="actions" style="justify-content:center">';
+        html += '<div class="actions" style="justify-content:center;margin-top:20px">';
         html += '<button class="btn btn-add" onclick="addPlot()">+ Add Plot</button>';
         html += '</div>';
       }
 
       content.innerHTML = html;
 
-      if (plots.length) {
-        chartInstance = renderDraggableChart(
-          document.getElementById('chart-area'),
-          plots, chartPoints || [],
-          () => autoSaveChart()
-        );
-
-        // Click handler for context panel
-        if (chartInstance) {
-          chartInstance.options.onClick = function(e) {
-            const points = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
-            if (points.length) {
-              showContextPanel(points[0].datasetIndex, points[0].index);
-            } else {
-              hideContextPanel();
-            }
-          };
+      if (plots.length && chartPoints && chartPoints.length) {
+        for (let i = 1; i <= 5; i++) {
+          renderPreviewChart(
+            document.getElementById('chart-style-' + i),
+            plots, chartPoints, i
+          );
         }
       }
     }

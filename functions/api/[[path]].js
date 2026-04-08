@@ -75,9 +75,12 @@ let migrated = false;
 async function autoMigrate(db) {
   if (migrated) return;
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 0, userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', private INTEGER NOT NULL DEFAULT 0, userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')))"),
     db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)")
+    db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0)"),
+    // One-time cleanup: delete old stories that have no chart_points
+    db.prepare("DELETE FROM plots WHERE story_id NOT IN (SELECT DISTINCT story_id FROM chart_points)"),
+    db.prepare("DELETE FROM stories WHERE id NOT IN (SELECT DISTINCT story_id FROM chart_points)")
   ]);
   migrated = true;
 }
@@ -142,7 +145,9 @@ async function createStory(env, user, body) {
     plotIds.push(r.meta.last_row_id);
   }
 
-  // For each plot, generate 3-8 random turning points (0-9999 coordinates)
+  // For each plot, generate 3-8 random turning points (0-10000 coordinates)
+  // x_pos: story progression (0=start, 10000=end)
+  // y_val: plot intensity (5000=neutral midpoint)
   const cpInsert = env.DB.prepare(
     'INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)'
   );
@@ -152,8 +157,8 @@ async function createStory(env, user, body) {
     const points = [];
     for (let i = 0; i < numTPs; i++) {
       points.push({
-        x: Math.floor(Math.random() * 10000), // 0-9999
-        y: Math.floor(Math.random() * 10000)  // 0-9999
+        x: Math.floor(Math.random() * 10001), // 0-10000
+        y: Math.floor(Math.random() * 10001)  // 0-10000
       });
     }
     points.sort((a, b) => a.x - b.x);
@@ -238,8 +243,8 @@ async function saveChartPoints(env, user, storyId, body) {
   );
   const batch = [delStmt];
   for (const cp of (body.points || [])) {
-    const x = Math.max(0, Math.min(9999, Math.round(cp.x_pos)));
-    const y = Math.max(0, Math.min(9999, Math.round(cp.y_val)));
+    const x = Math.max(0, Math.min(10000, Math.round(cp.x_pos)));
+    const y = Math.max(0, Math.min(10000, Math.round(cp.y_val)));
     batch.push(insStmt.bind(storyId, cp.plot_id, x, y));
   }
   await env.DB.batch(batch);

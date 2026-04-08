@@ -41,7 +41,7 @@
       document.getElementById('debug').textContent =
         'plots: ' + plots.length + ', points: ' + cp.length;
 
-      // Build datasets — x_pos and y_val are 0-9999, plot as percentage (0-100)
+      // Build datasets — x_pos and y_val are 0-10000, plot as percentage (0-100)
       var byPlot = {};
       for (var i = 0; i < cp.length; i++) {
         var p = cp[i];
@@ -98,7 +98,11 @@
               min: 0,
               max: 100,
               ticks: { display: false, stepSize: 5 },
-              grid: { color: '#e0e0e0', lineWidth: 0.5, drawTicks: false },
+              grid: {
+                color: function(ctx) { return ctx.tick.value === 50 ? '#aaa' : '#e0e0e0'; },
+                lineWidth: function(ctx) { return ctx.tick.value === 50 ? 1.5 : 0.5; },
+                drawTicks: false
+              },
               border: { display: true, color: '#ccc', width: 1 }
             }
           }

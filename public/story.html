@@ -33,7 +33,7 @@
 
       document.getElementById('content').innerHTML =
         '<h1>' + (story.title || 'Untitled') + '</h1>' +
-        '<div style="position:relative;width:100%;height:0;padding-bottom:100%">' +
+        '<div style="position:relative;width:100%;height:0;padding-bottom:100%;border:1.5px solid #bbb;border-radius:4px;overflow:hidden">' +
           '<canvas id="myChart" style="position:absolute;top:0;left:0;width:100%;height:100%"></canvas>' +
         '</div>' +
         '<p id="debug" style="font-size:0.8em;color:#999;margin-top:8px"></p>';
@@ -91,7 +91,7 @@
               max: 100,
               ticks: { display: false, stepSize: 5 },
               grid: { color: '#e0e0e0', lineWidth: 0.5, drawTicks: false },
-              border: { display: true, color: '#bbb', width: 1.5 }
+              border: { display: false }
             },
             y: {
               type: 'linear',
@@ -103,17 +103,7 @@
                 lineWidth: function(ctx) { return ctx.tick.value === 50 ? 1.5 : 0.5; },
                 drawTicks: false
               },
-              border: { display: true, color: '#bbb', width: 1.5 }
-            },
-            x2: {
-              type: 'linear', min: 0, max: 100, position: 'top',
-              ticks: { display: false }, grid: { drawOnChartArea: false },
-              border: { display: true, color: '#bbb', width: 1.5 }
-            },
-            y2: {
-              type: 'linear', min: 0, max: 100, position: 'right',
-              ticks: { display: false }, grid: { drawOnChartArea: false },
-              border: { display: true, color: '#bbb', width: 1.5 }
+              border: { display: false }
             }
           }
         }

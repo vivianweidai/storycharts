@@ -60,7 +60,7 @@ function renderHeader(user) {
       e.preventDefault();
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=.storycharts.com';
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/';
-      window.location.href = '/';
+      window.location.reload();
     });
     document.addEventListener('click', function() { drop.style.display = 'none'; });
   }

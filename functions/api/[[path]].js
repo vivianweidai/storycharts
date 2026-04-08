@@ -94,7 +94,26 @@ async function requireOwner(env, user, storyId) {
 // --- Stories ---
 
 async function listStories(env) {
-  return json((await env.DB.prepare('SELECT id, title, userid FROM stories ORDER BY id DESC').all()).results);
+  const stories = (await env.DB.prepare('SELECT id, title, userid, created_at FROM stories ORDER BY id DESC').all()).results;
+  const allPlots = (await env.DB.prepare('SELECT id, story_id, title FROM plots ORDER BY sort_order').all()).results;
+  const allPoints = (await env.DB.prepare('SELECT plot_id, x_pos, y_val FROM chart_points ORDER BY x_pos').all()).results;
+  const plotsByStory = {};
+  for (const p of allPlots) {
+    if (!plotsByStory[p.story_id]) plotsByStory[p.story_id] = [];
+    plotsByStory[p.story_id].push(p);
+  }
+  const pointsByPlot = {};
+  for (const cp of allPoints) {
+    if (!pointsByPlot[cp.plot_id]) pointsByPlot[cp.plot_id] = [];
+    pointsByPlot[cp.plot_id].push({ x: cp.x_pos, y: cp.y_val });
+  }
+  for (const s of stories) {
+    s.plots = (plotsByStory[s.id] || []).map(p => ({
+      id: p.id, title: p.title,
+      points: pointsByPlot[p.id] || []
+    }));
+  }
+  return json(stories);
 }
 
 async function createStory(env, user, body) {

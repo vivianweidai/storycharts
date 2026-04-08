@@ -135,54 +135,44 @@ h2 { font-size: 1.1em; margin: 1.5em 0 0.5em; color: #656d76; }
 /* Empty state */
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }
 
-/* Drag-reorder table */
-.drag-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 4px 0;
-}
-.drag-row td {
-  padding: 10px 6px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f0f0f0;
-}
-.drag-row:last-child td { border-bottom: none; }
-.drag-row.drag-ghost {
-  opacity: 0.2;
-  background: #ddf4ff;
-}
-.drag-handle-cell { width: 28px; }
-.drag-handle {
-  cursor: grab;
-  color: #b0b0b0;
-  font-size: 1.3em;
-  user-select: none;
-  letter-spacing: -3px;
-  touch-action: none;
-  padding: 4px 2px;
-}
-.drag-handle:active { color: #0969da; }
-.drag-title {
-  font-weight: 600;
+/* Add buttons */
+.btn-add {
+  padding: 10px 24px;
   font-size: 0.95em;
-  white-space: nowrap;
+  border-radius: 8px;
+  font-weight: 500;
 }
-.drag-desc {
+
+/* Context panel */
+.context-panel {
+  background: #f6f8fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0 0 12px;
+}
+.context-inner { }
+.context-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.95em;
+}
+.context-plot { font-weight: 700; }
+.context-sep { color: #c8c8c8; }
+.context-scene { font-weight: 600; color: #1f2328; }
+.context-value { color: #656d76; font-size: 0.85em; }
+.context-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.context-close { color: #656d76; }
+.context-details {
+  margin-top: 10px;
   font-size: 0.85em;
-  color: #656d76;
+  color: #444;
+  line-height: 1.5;
 }
-.drag-actions { width: 1%; white-space: nowrap; }
-
-/* Floating drag clone */
-.drag-clone {
-  position: fixed;
-  z-index: 200;
-  pointer-events: none;
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  border-radius: 6px;
-  opacity: 0.9;
-}
-
-/* Back link */
-.back { font-size: 0.85em; margin-bottom: 12px; display: inline-block; }
+.context-details > div + div { margin-top: 4px; }

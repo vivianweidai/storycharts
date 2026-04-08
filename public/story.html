@@ -48,62 +48,22 @@
       }
       html += '</div>';
 
-      // Chart area — always present
+      // Chart area
       html += '<div class="chart-container" id="chart-area" style="height:400px;margin:16px 0">';
       if (!plots.length && !scenes.length) {
         html += '<p class="empty">Add plots and scenes to build your chart.</p>';
       }
       html += '</div>';
 
+      // Context panel (hidden initially, shown on point tap)
+      html += '<div id="context-panel" class="context-panel" style="display:none"></div>';
 
-      // Summary section
-      html += '<hr class="section-divider">';
-      html += '<div style="display:flex;align-items:center;gap:8px">';
-      html += '<h2 style="margin:0">Summary</h2>';
-      if (isOwner) html += '<button class="btn btn-sm" onclick="editSummary()">edit</button>';
-      html += '</div>';
-      html += '<p style="font-size:0.9em;color:#444;margin:4px 0 8px">' + (story.summary || '<em>No summary yet</em>') + '</p>';
-
-      // Plots section
-      html += '<hr class="section-divider">';
-      html += '<div style="display:flex;align-items:center;gap:8px">';
-      html += '<h2 style="margin:0">Plots</h2>';
-      if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addPlot()">+ Add</button>';
-      html += '</div>';
-      if (plots.length) {
-        html += '<table class="drag-table" id="plot-list"><tbody>';
-        for (const p of plots) {
-          html += '<tr class="drag-row" data-id="' + p.id + '">';
-          if (isOwner) html += '<td class="drag-handle-cell"><span class="drag-handle">&#8942;&#8942;</span></td>';
-          html += '<td class="drag-title">' + (p.title || 'Untitled Plot') + '</td>';
-          html += '<td class="drag-desc">' + (p.description || '<em>No description</em>') + '</td>';
-          if (isOwner) html += '<td class="drag-actions"><button class="btn btn-sm" onclick="editPlot(' + p.id + ')">edit</button></td>';
-          html += '</tr>';
-        }
-        html += '</tbody></table>';
-      } else {
-        html += '<p class="empty" style="padding:12px 0">No plots yet.</p>';
-      }
-
-      // Scenes section
-      html += '<hr class="section-divider">';
-      html += '<div style="display:flex;align-items:center;gap:8px">';
-      html += '<h2 style="margin:0">Scenes</h2>';
-      if (isOwner) html += '<button class="btn btn-sm btn-primary" onclick="addScene()">+ Add</button>';
-      html += '</div>';
-      if (scenes.length) {
-        html += '<table class="drag-table" id="scene-list"><tbody>';
-        for (const s of scenes) {
-          html += '<tr class="drag-row" data-id="' + s.id + '">';
-          if (isOwner) html += '<td class="drag-handle-cell"><span class="drag-handle">&#8942;&#8942;</span></td>';
-          html += '<td class="drag-title">' + (s.title || 'Untitled Scene') + '</td>';
-          html += '<td class="drag-desc">' + (s.description || '<em>No description</em>') + '</td>';
-          if (isOwner) html += '<td class="drag-actions"><button class="btn btn-sm" onclick="editScene(' + s.id + ')">edit</button></td>';
-          html += '</tr>';
-        }
-        html += '</tbody></table>';
-      } else {
-        html += '<p class="empty" style="padding:12px 0">No scenes yet.</p>';
+      // Add buttons
+      if (isOwner) {
+        html += '<div class="actions" style="justify-content:center">';
+        html += '<button class="btn btn-add" onclick="addPlot()">+ Add Plot</button>';
+        html += '<button class="btn btn-add" onclick="addScene()">+ Add Scene</button>';
+        html += '</div>';
       }
 
       content.innerHTML = html;
@@ -115,10 +75,58 @@
           plots, scenes, turningPoints,
           () => autoSaveChart()
         );
-      }
 
-      // Init drag-and-drop reordering for plots and scenes
-      if (isOwner) initDragReorder();
+        // Click handler for context panel
+        chartInstance.options.onClick = function(e) {
+          const points = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+          if (points.length) {
+            const pt = points[0];
+            showContextPanel(pt.datasetIndex, pt.index);
+          } else {
+            hideContextPanel();
+          }
+        };
+      }
+    }
+
+    // --- Context panel ---
+
+    function showContextPanel(datasetIndex, sceneIndex) {
+      const { plots, scenes, turningPoints, isOwner } = storyData;
+      const plot = plots[datasetIndex];
+      const scene = scenes[sceneIndex];
+      const key = plot.id + '-' + scene.id;
+      const value = chartInstance._tpMap[key] != null ? chartInstance._tpMap[key] : 0;
+      const color = PLOT_COLORS[datasetIndex % PLOT_COLORS.length];
+
+      const panel = document.getElementById('context-panel');
+      let html = '<div class="context-inner">';
+      html += '<div class="context-row">';
+      html += '<span class="context-plot" style="color:' + color + '">' + (plot.title || 'Plot') + '</span>';
+      html += '<span class="context-sep">&times;</span>';
+      html += '<span class="context-scene">' + (scene.title || 'Scene') + '</span>';
+      html += '<span class="context-value">= ' + value + '</span>';
+      html += '</div>';
+      if (isOwner) {
+        html += '<div class="context-actions">';
+        html += '<button class="btn btn-sm" onclick="editPlot(' + plot.id + ')">edit plot</button>';
+        html += '<button class="btn btn-sm" onclick="editScene(' + scene.id + ')">edit scene</button>';
+        html += '<button class="btn btn-sm context-close" onclick="hideContextPanel()">close</button>';
+        html += '</div>';
+      }
+      if (plot.description || scene.description) {
+        html += '<div class="context-details">';
+        if (plot.description) html += '<div><strong style="color:' + color + '">Plot:</strong> ' + plot.description + '</div>';
+        if (scene.description) html += '<div><strong>Scene:</strong> ' + scene.description + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      panel.innerHTML = html;
+      panel.style.display = 'block';
+    }
+
+    function hideContextPanel() {
+      document.getElementById('context-panel').style.display = 'none';
     }
 
     // --- Chart auto-save ---
@@ -145,23 +153,14 @@
     function editStory() {
       const s = storyData.story;
       showModal('Edit Story', [
-        { name: 'title', label: 'Title', type: 'text', value: s.title }
+        { name: 'title', label: 'Title', type: 'text', value: s.title },
+        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary }
       ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { title: data.title, summary: s.summary });
+        await api('PUT', 'stories/' + s.id, { title: data.title, summary: data.summary });
         location.reload();
       }, async () => {
         await api('DELETE', 'stories/' + s.id);
         location.href = '/';
-      });
-    }
-
-    function editSummary() {
-      const s = storyData.story;
-      showModal('Edit Summary', [
-        { name: 'summary', label: 'Summary', type: 'textarea', value: s.summary }
-      ], async (data) => {
-        await api('PUT', 'stories/' + s.id, { title: s.title, summary: data.summary });
-        location.reload();
       });
     }
 
@@ -215,89 +214,6 @@
         await api('DELETE', 'scenes/' + sceneId);
         location.reload();
       });
-    }
-
-    // --- Touch + mouse drag reorder ---
-
-    function initDragReorder() {
-      document.querySelectorAll('.drag-table').forEach(table => {
-        const tbody = table.querySelector('tbody');
-        let dragRow = null;
-        let clone = null;
-        let offsetY = 0;
-
-        function getY(e) {
-          return e.touches ? e.touches[0].clientY : e.clientY;
-        }
-
-        function onStart(e) {
-          const handle = e.target.closest('.drag-handle');
-          if (!handle) return;
-          e.preventDefault();
-          dragRow = handle.closest('.drag-row');
-          const rect = dragRow.getBoundingClientRect();
-          offsetY = getY(e) - rect.top;
-
-          // Create floating clone
-          clone = dragRow.cloneNode(true);
-          clone.classList.add('drag-clone');
-          clone.style.width = rect.width + 'px';
-          clone.style.top = rect.top + 'px';
-          clone.style.left = rect.left + 'px';
-          document.body.appendChild(clone);
-
-          // Ghost the original
-          dragRow.classList.add('drag-ghost');
-        }
-
-        function onMove(e) {
-          if (!dragRow || !clone) return;
-          e.preventDefault();
-          const y = getY(e);
-
-          // Move clone with finger
-          clone.style.top = (y - offsetY) + 'px';
-
-          // Swap rows based on finger position
-          const rows = [...tbody.querySelectorAll('.drag-row')];
-          for (const row of rows) {
-            if (row === dragRow) continue;
-            const rect = row.getBoundingClientRect();
-            const mid = rect.top + rect.height / 2;
-            if (y < mid && row === dragRow.previousElementSibling) {
-              tbody.insertBefore(dragRow, row);
-              break;
-            } else if (y > mid && row === dragRow.nextElementSibling) {
-              tbody.insertBefore(row, dragRow);
-              break;
-            }
-          }
-        }
-
-        function onEnd() {
-          if (!dragRow) return;
-          dragRow.classList.remove('drag-ghost');
-          if (clone) { clone.remove(); clone = null; }
-          dragRow = null;
-          saveOrder();
-        }
-
-        tbody.addEventListener('mousedown', onStart);
-        tbody.addEventListener('touchstart', onStart, { passive: false });
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('mouseup', onEnd);
-        document.addEventListener('touchend', onEnd);
-      });
-    }
-
-    async function saveOrder() {
-      const plotList = document.getElementById('plot-list');
-      const sceneList = document.getElementById('scene-list');
-      const plotIds = plotList ? [...plotList.querySelectorAll('.drag-row')].map(el => parseInt(el.dataset.id)) : [];
-      const sceneIds = sceneList ? [...sceneList.querySelectorAll('.drag-row')].map(el => parseInt(el.dataset.id)) : [];
-      await api('POST', 'stories/' + storyData.story.id + '/order', { plots: plotIds, scenes: sceneIds });
-      location.reload();
     }
   </script>
 </body>

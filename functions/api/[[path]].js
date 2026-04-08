@@ -142,25 +142,23 @@ async function createStory(env, user, body) {
     plotIds.push(r.meta.last_row_id);
   }
 
-  // For each plot, generate 3-8 random turning points
+  // For each plot, generate 3-8 random turning points (0-9999 coordinates)
   const cpInsert = env.DB.prepare(
     'INSERT INTO chart_points (story_id, plot_id, x_pos, y_val) VALUES (?, ?, ?, ?)'
   );
   const batch = [];
   for (const plotId of plotIds) {
     const numTPs = 3 + Math.floor(Math.random() * 6); // 3 to 8
-    // Pick unique random x positions from 0-20
-    const allX = Array.from({ length: 21 }, (_, i) => i);
-    const xPositions = [];
+    const points = [];
     for (let i = 0; i < numTPs; i++) {
-      const idx = Math.floor(Math.random() * allX.length);
-      xPositions.push(allX.splice(idx, 1)[0]);
+      points.push({
+        x: Math.floor(Math.random() * 10000), // 0-9999
+        y: Math.floor(Math.random() * 10000)  // 0-9999
+      });
     }
-    xPositions.sort((a, b) => a - b);
-
-    for (const x of xPositions) {
-      const y = Math.floor(Math.random() * 21) - 10; // -10 to +10
-      batch.push(cpInsert.bind(storyId, plotId, x, y));
+    points.sort((a, b) => a.x - b.x);
+    for (const p of points) {
+      batch.push(cpInsert.bind(storyId, plotId, p.x, p.y));
     }
   }
   if (batch.length) await env.DB.batch(batch);
@@ -240,8 +238,8 @@ async function saveChartPoints(env, user, storyId, body) {
   );
   const batch = [delStmt];
   for (const cp of (body.points || [])) {
-    const x = Math.max(0, Math.min(20, Math.round(cp.x_pos)));
-    const y = Math.max(-10, Math.min(10, Math.round(cp.y_val)));
+    const x = Math.max(0, Math.min(9999, Math.round(cp.x_pos)));
+    const y = Math.max(0, Math.min(9999, Math.round(cp.y_val)));
     batch.push(insStmt.bind(storyId, cp.plot_id, x, y));
   }
   await env.DB.batch(batch);

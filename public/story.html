@@ -73,7 +73,7 @@
           responsive: true,
           maintainAspectRatio: true,
           aspectRatio: 1,
-          layout: { padding: 0 },
+          layout: { padding: 10 },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -91,7 +91,7 @@
               max: 100,
               ticks: { display: false, stepSize: 5 },
               grid: { color: '#e0e0e0', lineWidth: 0.5, drawTicks: false },
-              border: { display: true, color: '#ccc', width: 1 }
+              border: { display: true, color: '#bbb', width: 1.5 }
             },
             y: {
               type: 'linear',
@@ -103,7 +103,17 @@
                 lineWidth: function(ctx) { return ctx.tick.value === 50 ? 1.5 : 0.5; },
                 drawTicks: false
               },
-              border: { display: true, color: '#ccc', width: 1 }
+              border: { display: true, color: '#bbb', width: 1.5 }
+            },
+            x2: {
+              type: 'linear', min: 0, max: 100, position: 'top',
+              ticks: { display: false }, grid: { drawOnChartArea: false },
+              border: { display: true, color: '#bbb', width: 1.5 }
+            },
+            y2: {
+              type: 'linear', min: 0, max: 100, position: 'right',
+              ticks: { display: false }, grid: { drawOnChartArea: false },
+              border: { display: true, color: '#bbb', width: 1.5 }
             }
           }
         }

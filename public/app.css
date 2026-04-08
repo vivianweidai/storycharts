@@ -36,11 +36,12 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
   overflow: hidden;
 }
 .user-menu-drop.open { display: block !important; }
-.user-menu-drop a {
-  display: block; padding: 8px 14px; font-size: 0.85em; color: #1f2328;
-  font-weight: 400; text-decoration: none;
+.user-menu-item {
+  display: block; width: 100%; padding: 8px 14px; font-size: 0.85em; color: #1f2328;
+  font-weight: 400; text-align: left; background: none; border: none;
+  cursor: pointer; font-family: inherit;
 }
-.user-menu-drop a:hover { background: #f6f8fa; text-decoration: none; }
+.user-menu-item:hover { background: #f6f8fa; }
 
 .story-list { list-style: none; }
 .story-card { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }

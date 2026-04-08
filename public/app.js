@@ -39,9 +39,9 @@ function renderHeader(user) {
   var s = '<a href="/">Story Charts</a>';
   if (user) {
     s += '<div class="user-menu">' +
-           '<button class="user-menu-btn" id="user-menu-btn">' + user.email + '</button>' +
+           '<button type="button" class="user-menu-btn" id="user-menu-btn">' + user.email + '</button>' +
            '<div class="user-menu-drop" id="user-menu-drop" style="display:none">' +
-             '<a href="#" id="logout-btn">Logout</a>' +
+             '<button type="button" id="logout-btn" class="user-menu-item">Logout</button>' +
            '</div>' +
          '</div>';
   } else {
@@ -50,18 +50,18 @@ function renderHeader(user) {
   h.innerHTML = s;
 
   if (user) {
-    var btn = document.getElementById('user-menu-btn');
     var drop = document.getElementById('user-menu-drop');
-    btn.onclick = function(e) {
+    document.getElementById('user-menu-btn').addEventListener('click', function(e) {
+      e.preventDefault();
       e.stopPropagation();
       drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
-    };
-    document.addEventListener('click', function() { drop.style.display = 'none'; });
-    document.getElementById('logout-btn').onclick = function(e) {
+    });
+    document.getElementById('logout-btn').addEventListener('click', function(e) {
       e.preventDefault();
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=.storycharts.com';
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/';
       window.location.href = '/';
-    };
+    });
+    document.addEventListener('click', function() { drop.style.display = 'none'; });
   }
 }

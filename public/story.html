@@ -102,23 +102,16 @@
         }
       });
 
-      // --- Halo overlay (HTML div positioned via getBoundingClientRect) ---
+      // --- Halo overlay ---
       var haloEl = document.getElementById('halo');
       var wrapEl = document.getElementById('chart-wrap');
 
-      function drawHalo(di, pi) {
-        if (di < 0 || pi < 0) { haloEl.style.display = 'none'; return; }
-        var meta = chart.getDatasetMeta(di);
-        if (!meta.data[pi]) { haloEl.style.display = 'none'; return; }
-        var pointEl = meta.data[pi];
-        var canvasRect = canvas.getBoundingClientRect();
+      function drawHaloAtPos(pos, di) {
+        if (!pos || di < 0) { haloEl.style.display = 'none'; return; }
         var wrapRect = wrapEl.getBoundingClientRect();
-        // pointEl.x/y are in chart internal pixels; canvas.getBoundingClientRect gives CSS size
-        var cssX = pointEl.x / canvas.width * canvasRect.width;
-        var cssY = pointEl.y / canvas.height * canvasRect.height;
-        // Position relative to wrap container
-        var left = canvasRect.left - wrapRect.left + cssX;
-        var top = canvasRect.top - wrapRect.top + cssY;
+        var canvasRect = canvas.getBoundingClientRect();
+        var left = canvasRect.left - wrapRect.left + pos.x;
+        var top = canvasRect.top - wrapRect.top + pos.y;
         var color = COLORS[di % COLORS.length];
         haloEl.style.display = 'block';
         haloEl.style.left = left + 'px';
@@ -172,7 +165,7 @@
         isDragging = true;
         dragDsi = hit.di;
         dragIdx = hit.pi;
-        drawHalo(dragDsi, dragIdx);
+        drawHaloAtPos(pos, dragDsi);
       }
 
       function onMove(e) {
@@ -183,7 +176,7 @@
         chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
         chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
         chart.update('none');
-        drawHalo(dragDsi, dragIdx);
+        drawHaloAtPos(pos, dragDsi);
       }
 
       function onEnd(e) {
@@ -191,7 +184,7 @@
         isDragging = false;
         chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
         chart.update('none');
-        drawHalo(-1, -1);
+        drawHaloAtPos(null, -1);
         dragDsi = -1;
         dragIdx = -1;
         saveChart(chart);

@@ -143,6 +143,7 @@
     if (!hit) return;
     e.preventDefault();
     isDragging = true; didMove = false;
+    infoEditing = false;
     dragPt = hit.pt;
     selDi = hit.di; selPi = hit.pi;
     draw(); updateInfo();
@@ -169,36 +170,144 @@
 
   function onClick(e) {
     if (didMove) { didMove = false; return; }
+    infoEditing = false;
     var pos = getPos(e);
-    // Point hit already handled by onStart
-    if (hitPoint(pos.x, pos.y)) return;
-    // Try line hit
+    if (hitPoint(pos.x, pos.y)) return; // handled by onStart
     var lh = hitLine(pos.x, pos.y);
-    if (lh) {
-      selDi = lh.di; selPi = -1;
-      draw(); updateInfo();
-      return;
-    }
-    // Empty — deselect
-    selDi = -1; selPi = -1;
-    draw(); updateInfo();
+    if (lh) { selDi = lh.di; selPi = -1; draw(); updateInfo(); return; }
+    selDi = -1; selPi = -1; draw(); updateInfo();
   }
+
+  var isOwnerGlobal = false;
+  var infoEditing = false;
 
   function updateInfo() {
     var el = document.getElementById('info');
-    if (selDi < 0) { el.innerHTML = ''; return; }
+    if (infoEditing) return; // don't clobber while editing
+
+    // Nothing selected — show add plot button
+    if (selDi < 0) {
+      el.innerHTML = isOwnerGlobal ?
+        '<button class="btn btn-sm btn-primary" id="add-plot-btn">+ add plot</button>' : '';
+      wireAddPlot();
+      return;
+    }
+
     var color = COLORS[selDi % COLORS.length];
     var plot = plots[selDi];
+
     if (selPi >= 0) {
+      // TP selected — show label, coords, edit
       var g = grouped();
       var pt = g[selDi][selPi];
-      el.innerHTML = '<div style="color:' + color + ';font-weight:600">' + (plot.title || 'Plot') + '</div>' +
-        '<div style="font-size:0.9em">' + (pt.label || 'Turning point') + '</div>' +
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
+          '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
+          '<span style="font-size:0.9em">' + esc(pt.label || 'Turning point') + '</span>' +
+          (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' : '') +
+        '</div>' +
         '<div style="font-size:0.8em;color:#888">(' + pt.x + ', ' + pt.y + ')</div>';
+      if (isOwnerGlobal) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
     } else {
-      el.innerHTML = '<div style="color:' + color + ';font-weight:600">' + (plot.title || 'Plot') + '</div>' +
-        '<div style="font-size:0.85em;color:#666">' + (plot.description || '') + '</div>';
+      // Plot selected — show name, desc, edit, add tp
+      el.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
+          '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
+          (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' +
+                           '<button class="btn btn-sm btn-primary" id="add-tp-btn">+ tp</button>' : '') +
+        '</div>' +
+        '<div style="font-size:0.85em;color:#666">' + esc(plot.description || '') + '</div>';
+      if (isOwnerGlobal) {
+        document.getElementById('info-edit-btn').onclick = function() { editPlot(selDi); };
+        document.getElementById('add-tp-btn').onclick = function() { addTP(selDi); };
+      }
     }
+  }
+
+  function wireAddPlot() {
+    var b = document.getElementById('add-plot-btn');
+    if (b) b.onclick = addPlot;
+  }
+
+  // --- Inline edit: Plot ---
+  function editPlot(di) {
+    infoEditing = true;
+    var el = document.getElementById('info');
+    var plot = plots[di];
+    var color = COLORS[di % COLORS.length];
+    el.innerHTML =
+      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
+        '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
+        '<button class="btn btn-sm btn-primary" id="ie-ok" style="flex-shrink:0">ok</button>' +
+        '<button class="btn btn-sm btn-danger" id="ie-del" style="flex-shrink:0">del</button>' +
+      '</div>' +
+      '<input id="ie-desc" type="text" maxlength="120" value="' + esc(plot.description || '') + '" placeholder="Description" style="width:100%;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit;color:#666">';
+    document.getElementById('ie-name').focus();
+    document.getElementById('ie-ok').onclick = function() {
+      var name = document.getElementById('ie-name').value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
+      var desc = document.getElementById('ie-desc').value.trim().replace(/<[^>]*>/g, '').slice(0, 120);
+      plot.title = name; plot.description = desc;
+      api('PUT', 'plots/' + plot.id, { title: name, description: desc });
+      infoEditing = false; draw(); updateInfo();
+    };
+    document.getElementById('ie-del').onclick = function() {
+      if (!confirm('Delete plot "' + plot.title + '" and all its turning points?')) return;
+      api('DELETE', 'plots/' + plot.id);
+      points = points.filter(function(p) { return p.plot_id !== plot.id; });
+      plots.splice(di, 1);
+      selDi = -1; selPi = -1; infoEditing = false;
+      draw(); updateInfo();
+    };
+  }
+
+  // --- Inline edit: TP ---
+  function editTP(di, pi) {
+    infoEditing = true;
+    var el = document.getElementById('info');
+    var g = grouped();
+    var pt = g[di][pi];
+    var color = COLORS[di % COLORS.length];
+    el.innerHTML =
+      '<div style="display:flex;gap:6px;align-items:center">' +
+        '<span style="color:' + color + ';font-weight:600;flex-shrink:0">' + esc(plots[di].title) + '</span>' +
+        '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit">' +
+        '<button class="btn btn-sm btn-primary" id="ie-ok" style="flex-shrink:0">ok</button>' +
+        '<button class="btn btn-sm btn-danger" id="ie-del" style="flex-shrink:0">del</button>' +
+      '</div>' +
+      '<div style="font-size:0.8em;color:#888;margin-top:4px">(' + pt.x + ', ' + pt.y + ')</div>';
+    document.getElementById('ie-label').focus();
+    document.getElementById('ie-ok').onclick = function() {
+      pt.label = document.getElementById('ie-label').value.trim().replace(/<[^>]*>/g, '').slice(0, 60);
+      infoEditing = false; updateInfo(); savePoints();
+    };
+    document.getElementById('ie-del').onclick = function() {
+      if (!confirm('Delete this turning point?')) return;
+      var idx = points.indexOf(pt);
+      if (idx >= 0) points.splice(idx, 1);
+      selDi = -1; selPi = -1; infoEditing = false;
+      draw(); updateInfo(); savePoints();
+    };
+  }
+
+  // --- Add plot ---
+  function addPlot() {
+    var names = ['Plot A','Plot B','Plot C','Plot D','Plot E'];
+    var name = names[plots.length % names.length];
+    api('POST', 'stories/' + storyId + '/plots', { title: name, description: '' }).then(function(r) {
+      plots.push({ id: r.id, title: name, description: '' });
+      // Add 3 random TPs
+      for (var i = 0; i < 3; i++) {
+        points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
+      }
+      savePoints(); draw(); updateInfo();
+    });
+  }
+
+  // --- Add TP to selected plot ---
+  function addTP(di) {
+    var plot = plots[di];
+    points.push({ plot_id: plot.id, x: 5000, y: 5000, label: 'New point' });
+    savePoints(); draw(); updateInfo();
   }
 
   function savePoints() {
@@ -228,6 +337,7 @@
 
     var storyTitle = data.story.title || 'Untitled';
     var isOwner = data.isOwner;
+    isOwnerGlobal = isOwner;
 
     document.getElementById('content').innerHTML =
       '<div id="title-row" style="display:flex;align-items:center;gap:8px">' +
@@ -289,7 +399,7 @@
 
     canvas = document.getElementById('c');
     ctx = canvas.getContext('2d');
-    draw();
+    draw(); updateInfo();
     window.addEventListener('resize', draw);
 
     canvas.addEventListener('mousedown', onStart);

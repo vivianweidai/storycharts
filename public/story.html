@@ -104,31 +104,33 @@
 
       // --- Halo overlay (separate canvas, no chart redraw) ---
       var haloCanvas = document.getElementById('haloCanvas');
-      function resizeHalo() {
-        haloCanvas.width = canvas.width;
-        haloCanvas.height = canvas.height;
-      }
-      resizeHalo();
-      new ResizeObserver(resizeHalo).observe(canvas);
       var haloCtx = haloCanvas.getContext('2d');
 
       function drawHalo(di, pi) {
+        var rect = canvas.getBoundingClientRect();
+        haloCanvas.width = rect.width;
+        haloCanvas.height = rect.height;
         haloCtx.clearRect(0, 0, haloCanvas.width, haloCanvas.height);
         if (di < 0 || pi < 0) return;
         var meta = chart.getDatasetMeta(di);
         if (!meta.data[pi]) return;
         var el = meta.data[pi];
+        // Convert from chart pixel coords to CSS coords
+        var dpr = window.devicePixelRatio || 1;
+        var hx = el.x / dpr;
+        var hy = el.y / dpr;
         var color = COLORS[di % COLORS.length];
+        var radius = 40;
         // Outer glow
         haloCtx.beginPath();
-        haloCtx.arc(el.x, el.y, 20, 0, Math.PI * 2);
-        haloCtx.fillStyle = color + '25';
+        haloCtx.arc(hx, hy, radius, 0, Math.PI * 2);
+        haloCtx.fillStyle = color + '20';
         haloCtx.fill();
         // Ring
         haloCtx.beginPath();
-        haloCtx.arc(el.x, el.y, 20, 0, Math.PI * 2);
+        haloCtx.arc(hx, hy, radius, 0, Math.PI * 2);
         haloCtx.strokeStyle = color + '50';
-        haloCtx.lineWidth = 2;
+        haloCtx.lineWidth = 2.5;
         haloCtx.stroke();
       }
 

@@ -37,7 +37,27 @@ function showModal(title, fields, onSave, onDelete) {
 function renderHeader(user) {
   var h = document.getElementById('header'); if (!h) return;
   var s = '<a href="/">Story Charts</a>';
-  s += user ? '<span style="font-size:0.8em;color:#656d76">' + user.email + '</span>'
-             : '<a href="/api/auth/login" class="auth-btn">Login</a>';
+  if (user) {
+    s += '<div class="user-menu">' +
+           '<button class="user-menu-btn" id="user-menu-btn">' + user.email + '</button>' +
+           '<div class="user-menu-drop" id="user-menu-drop">' +
+             '<a href="#" id="logout-btn">Logout</a>' +
+           '</div>' +
+         '</div>';
+  } else {
+    s += '<a href="/api/auth/login" class="auth-btn">Login</a>';
+  }
   h.innerHTML = s;
+
+  if (user) {
+    var btn = document.getElementById('user-menu-btn');
+    var drop = document.getElementById('user-menu-drop');
+    btn.onclick = function(e) { e.stopPropagation(); drop.classList.toggle('open'); };
+    document.addEventListener('click', function() { drop.classList.remove('open'); });
+    document.getElementById('logout-btn').onclick = function(e) {
+      e.preventDefault();
+      document.cookie = 'CF_Authorization=; Max-Age=0; path=/';
+      window.location.href = '/cdn-cgi/access/logout';
+    };
+  }
 }

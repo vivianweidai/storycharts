@@ -21,6 +21,26 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 }
 .header .auth-btn:hover { background: #ddf4ff; border-color: #0969da; text-decoration: none; }
 
+.user-menu { position: relative; }
+.user-menu-btn {
+  font-size: 0.8em; color: #656d76; background: none; border: 1px solid transparent;
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.user-menu-btn:hover { background: #f6f8fa; border-color: #d1d9e0; }
+.user-menu-drop {
+  display: none; position: absolute; right: 0; top: 100%; margin-top: 4px;
+  background: #fff; border: 1px solid #d1d9e0; border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1); min-width: 120px; z-index: 50;
+  overflow: hidden;
+}
+.user-menu-drop.open { display: block; }
+.user-menu-drop a {
+  display: block; padding: 8px 14px; font-size: 0.85em; color: #1f2328;
+  text-decoration: none;
+}
+.user-menu-drop a:hover { background: #f6f8fa; }
+
 .story-list { list-style: none; }
 .story-card { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
 .story-card:last-child { border-bottom: none; }

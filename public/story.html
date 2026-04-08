@@ -102,6 +102,44 @@
         }
       });
 
+      // --- Selection + highlight state ---
+      var selectedDsi = -1, selectedIdx = -1; // persists after release
+
+      function applySelection() {
+        // Reset all datasets to default styling
+        for (var d = 0; d < plots.length; d++) {
+          var ds = chart.data.datasets[d];
+          var len = ds.data.length;
+          if (selectedDsi === d) {
+            // Selected plot: bold line, larger points
+            ds.borderWidth = 3;
+            ds.pointRadius = new Array(len).fill(6);
+            ds.borderColor = COLORS[d % COLORS.length];
+            ds.backgroundColor = COLORS[d % COLORS.length];
+          } else if (selectedDsi >= 0) {
+            // Unselected plot: fade it
+            ds.borderWidth = 1.5;
+            ds.pointRadius = new Array(len).fill(4);
+            ds.borderColor = COLORS[d % COLORS.length] + '50';
+            ds.backgroundColor = COLORS[d % COLORS.length] + '50';
+          } else {
+            // Nothing selected: normal
+            ds.borderWidth = 2;
+            ds.pointRadius = new Array(len).fill(5);
+            ds.borderColor = COLORS[d % COLORS.length];
+            ds.backgroundColor = COLORS[d % COLORS.length];
+          }
+        }
+        // If a specific point is selected, make it extra big
+        if (selectedDsi >= 0 && selectedIdx >= 0) {
+          var sds = chart.data.datasets[selectedDsi];
+          if (selectedIdx < sds.pointRadius.length) {
+            sds.pointRadius[selectedIdx] = 10;
+          }
+        }
+        chart.update('none');
+      }
+
       // --- Halo overlay ---
       var haloEl = document.getElementById('halo');
       var wrapEl = document.getElementById('chart-wrap');
@@ -120,8 +158,27 @@
         haloEl.style.border = '2.5px solid ' + color + '40';
       }
 
-      // --- Custom drag implementation ---
-      var dragDsi = -1, dragIdx = -1, isDragging = false;
+      function showHaloOnSelected() {
+        if (selectedDsi < 0 || selectedIdx < 0) { haloEl.style.display = 'none'; return; }
+        var meta = chart.getDatasetMeta(selectedDsi);
+        if (!meta.data[selectedIdx]) { haloEl.style.display = 'none'; return; }
+        var el = meta.data[selectedIdx];
+        var canvasRect = canvas.getBoundingClientRect();
+        var wrapRect = wrapEl.getBoundingClientRect();
+        var scaleX = canvasRect.width / canvas.width;
+        var scaleY = canvasRect.height / canvas.height;
+        var left = canvasRect.left - wrapRect.left + el.x * scaleX;
+        var top = canvasRect.top - wrapRect.top + el.y * scaleY;
+        var color = COLORS[selectedDsi % COLORS.length];
+        haloEl.style.display = 'block';
+        haloEl.style.left = left + 'px';
+        haloEl.style.top = top + 'px';
+        haloEl.style.background = color + '18';
+        haloEl.style.border = '2.5px solid ' + color + '40';
+      }
+
+      // --- Custom drag + tap implementation ---
+      var dragDsi = -1, dragIdx = -1, isDragging = false, didMove = false;
 
       function getPos(e) {
         var t = e.touches ? e.touches[0] : e;
@@ -130,13 +187,16 @@
       }
 
       function findPoint(pos) {
-        // Check all points, find nearest within hit radius
-        var best = null, bestDist = 25; // pixel threshold
+        var best = null, bestDist = 25;
         for (var di = 0; di < plots.length; di++) {
           var meta = chart.getDatasetMeta(di);
           for (var pi = 0; pi < meta.data.length; pi++) {
             var el = meta.data[pi];
-            var dx = el.x - pos.x, dy = el.y - pos.y;
+            // Scale chart coords to CSS coords for distance check
+            var canvasRect = canvas.getBoundingClientRect();
+            var ex = el.x * canvasRect.width / canvas.width;
+            var ey = el.y * canvasRect.height / canvas.height;
+            var dx = ex - pos.x, dy = ey - pos.y;
             var dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < bestDist) {
               bestDist = dist;
@@ -145,6 +205,32 @@
           }
         }
         return best;
+      }
+
+      function findLine(pos) {
+        // Check if pos is near any line segment
+        var canvasRect = canvas.getBoundingClientRect();
+        for (var di = 0; di < plots.length; di++) {
+          var meta = chart.getDatasetMeta(di);
+          for (var pi = 0; pi < meta.data.length - 1; pi++) {
+            var a = meta.data[pi], b = meta.data[pi + 1];
+            var ax = a.x * canvasRect.width / canvas.width;
+            var ay = a.y * canvasRect.height / canvas.height;
+            var bx = b.x * canvasRect.width / canvas.width;
+            var by = b.y * canvasRect.height / canvas.height;
+            var dist = distToSegment(pos.x, pos.y, ax, ay, bx, by);
+            if (dist < 15) return { di: di };
+          }
+        }
+        return null;
+      }
+
+      function distToSegment(px, py, ax, ay, bx, by) {
+        var dx = bx - ax, dy = by - ay;
+        var t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t));
+        var nx = ax + t * dx, ny = ay + t * dy;
+        return Math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny));
       }
 
       function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -163,32 +249,66 @@
         if (!hit) return;
         e.preventDefault();
         isDragging = true;
+        didMove = false;
         dragDsi = hit.di;
         dragIdx = hit.pi;
+        selectedDsi = hit.di;
+        selectedIdx = hit.pi;
+        applySelection();
         drawHaloAtPos(pos, dragDsi);
       }
 
       function onMove(e) {
         if (!isDragging) return;
         e.preventDefault();
+        didMove = true;
         var pos = getPos(e);
         var val = pixelToValue(pos);
         chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
         chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
-        chart.update('none');
+        applySelection();
         drawHaloAtPos(pos, dragDsi);
       }
 
       function onEnd(e) {
         if (!isDragging) return;
         isDragging = false;
-        chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
-        chart.update('none');
-        drawHaloAtPos(null, -1);
+        if (didMove) {
+          chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
+          // Find the new index of the dragged point after sort
+          selectedIdx = -1; // we'll just keep plot selected
+        }
+        applySelection();
+        showHaloOnSelected();
         dragDsi = -1;
         dragIdx = -1;
-        saveChart(chart);
+        if (didMove) saveChart(chart);
       }
+
+      // Tap on empty area or line
+      canvas.addEventListener('click', function(e) {
+        if (didMove) return; // was a drag, not a tap
+        var pos = getPos(e);
+        var hit = findPoint(pos);
+        if (hit) {
+          // Point tap — already handled by onStart
+          return;
+        }
+        var lineHit = findLine(pos);
+        if (lineHit) {
+          // Line tap — select entire plot
+          selectedDsi = lineHit.di;
+          selectedIdx = -1;
+          applySelection();
+          haloEl.style.display = 'none';
+          return;
+        }
+        // Tap on empty — deselect all
+        selectedDsi = -1;
+        selectedIdx = -1;
+        applySelection();
+        haloEl.style.display = 'none';
+      });
 
       canvas.addEventListener('mousedown', onStart);
       canvas.addEventListener('touchstart', onStart, { passive: false });

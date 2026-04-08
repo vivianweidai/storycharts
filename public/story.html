@@ -101,20 +101,31 @@
         }
       });
 
-      // --- Highlight active point ---
+      // --- Highlight active point with halo ---
+      // Use a hidden extra dataset as a halo ring behind the active point
+      chart.data.datasets.push({
+        label: '_halo',
+        data: [],
+        borderColor: 'rgba(255,255,255,0.8)',
+        backgroundColor: 'rgba(70,120,180,0.15)',
+        pointRadius: 18,
+        pointBorderWidth: 3,
+        pointStyle: 'circle',
+        showLine: false,
+        fill: false
+      });
+      var haloIdx = chart.data.datasets.length - 1;
+
       function highlightPoint(di, pi) {
-        for (var d = 0; d < chart.data.datasets.length; d++) {
-          var ds = chart.data.datasets[d];
-          var len = ds.data.length;
-          ds.pointRadius = new Array(len).fill(5);
-          ds.pointBorderWidth = new Array(len).fill(2);
-          ds.pointBorderColor = new Array(len).fill(ds.borderColor);
-        }
         if (di >= 0 && pi >= 0) {
-          var ads = chart.data.datasets[di];
-          ads.pointRadius[pi] = 10;
-          ads.pointBorderWidth[pi] = 3;
-          ads.pointBorderColor[pi] = '#fff';
+          var pt = chart.data.datasets[di].data[pi];
+          chart.data.datasets[haloIdx].data = [{ x: pt.x, y: pt.y }];
+          chart.data.datasets[haloIdx].backgroundColor =
+            COLORS[di % COLORS.length] + '30';
+          chart.data.datasets[haloIdx].borderColor =
+            COLORS[di % COLORS.length] + '60';
+        } else {
+          chart.data.datasets[haloIdx].data = [];
         }
         chart.update('none');
       }

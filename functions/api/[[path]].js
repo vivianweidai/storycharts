@@ -22,6 +22,9 @@ export async function onRequest(context) {
     // Admin: delete all stories, plots, chart_points
     if (path === '/admin/reset' && method === 'POST') {
       if (!user) return json({ error: 'Unauthorized' }, 401);
+      // Clean legacy tables if they exist
+      try { await env.DB.prepare('DELETE FROM turning_points').run(); } catch {}
+      try { await env.DB.prepare('DELETE FROM scenes').run(); } catch {}
       await env.DB.batch([
         env.DB.prepare('DELETE FROM chart_points'),
         env.DB.prepare('DELETE FROM plots'),

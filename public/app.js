@@ -40,7 +40,7 @@ function renderHeader(user) {
   if (user) {
     s += '<div class="user-menu">' +
            '<button class="user-menu-btn" id="user-menu-btn">' + user.email + '</button>' +
-           '<div class="user-menu-drop" id="user-menu-drop">' +
+           '<div class="user-menu-drop" id="user-menu-drop" style="display:none">' +
              '<a href="#" id="logout-btn">Logout</a>' +
            '</div>' +
          '</div>';
@@ -52,12 +52,16 @@ function renderHeader(user) {
   if (user) {
     var btn = document.getElementById('user-menu-btn');
     var drop = document.getElementById('user-menu-drop');
-    btn.onclick = function(e) { e.stopPropagation(); drop.classList.toggle('open'); };
-    document.addEventListener('click', function() { drop.classList.remove('open'); });
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+    };
+    document.addEventListener('click', function() { drop.style.display = 'none'; });
     document.getElementById('logout-btn').onclick = function(e) {
       e.preventDefault();
+      document.cookie = 'CF_Authorization=; Max-Age=0; path=/; domain=.storycharts.com';
       document.cookie = 'CF_Authorization=; Max-Age=0; path=/';
-      window.location.href = '/cdn-cgi/access/logout';
+      window.location.href = '/';
     };
   }
 }

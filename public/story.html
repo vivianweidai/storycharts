@@ -36,6 +36,7 @@
         '<h1>' + (data.story.title || 'Untitled') + '</h1>' +
         '<div id="chart-wrap" style="position:relative;width:100%;height:0;padding-bottom:100%;border:1.5px solid #8ab;border-radius:6px;overflow:hidden;background:#eef4fb">' +
           '<canvas id="myChart" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none"></canvas>' +
+          '<canvas id="haloCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>' +
         '</div>';
 
       // Build datasets — 0-10000 stored, display as 0-100%
@@ -101,33 +102,34 @@
         }
       });
 
-      // --- Highlight active point with halo ---
-      // Use a hidden extra dataset as a halo ring behind the active point
-      chart.data.datasets.push({
-        label: '_halo',
-        data: [],
-        borderColor: 'rgba(255,255,255,0.8)',
-        backgroundColor: 'rgba(70,120,180,0.15)',
-        pointRadius: 18,
-        pointBorderWidth: 3,
-        pointStyle: 'circle',
-        showLine: false,
-        fill: false
-      });
-      var haloIdx = chart.data.datasets.length - 1;
+      // --- Halo overlay (separate canvas, no chart redraw) ---
+      var haloCanvas = document.getElementById('haloCanvas');
+      function resizeHalo() {
+        haloCanvas.width = canvas.width;
+        haloCanvas.height = canvas.height;
+      }
+      resizeHalo();
+      new ResizeObserver(resizeHalo).observe(canvas);
+      var haloCtx = haloCanvas.getContext('2d');
 
-      function highlightPoint(di, pi) {
-        if (di >= 0 && pi >= 0) {
-          var pt = chart.data.datasets[di].data[pi];
-          chart.data.datasets[haloIdx].data = [{ x: pt.x, y: pt.y }];
-          chart.data.datasets[haloIdx].backgroundColor =
-            COLORS[di % COLORS.length] + '30';
-          chart.data.datasets[haloIdx].borderColor =
-            COLORS[di % COLORS.length] + '60';
-        } else {
-          chart.data.datasets[haloIdx].data = [];
-        }
-        chart.update('none');
+      function drawHalo(di, pi) {
+        haloCtx.clearRect(0, 0, haloCanvas.width, haloCanvas.height);
+        if (di < 0 || pi < 0) return;
+        var meta = chart.getDatasetMeta(di);
+        if (!meta.data[pi]) return;
+        var el = meta.data[pi];
+        var color = COLORS[di % COLORS.length];
+        // Outer glow
+        haloCtx.beginPath();
+        haloCtx.arc(el.x, el.y, 20, 0, Math.PI * 2);
+        haloCtx.fillStyle = color + '25';
+        haloCtx.fill();
+        // Ring
+        haloCtx.beginPath();
+        haloCtx.arc(el.x, el.y, 20, 0, Math.PI * 2);
+        haloCtx.strokeStyle = color + '50';
+        haloCtx.lineWidth = 2;
+        haloCtx.stroke();
       }
 
       // --- Custom drag implementation ---
@@ -142,7 +144,7 @@
       function findPoint(pos) {
         // Check all points, find nearest within hit radius
         var best = null, bestDist = 25; // pixel threshold
-        for (var di = 0; di < chart.data.datasets.length; di++) {
+        for (var di = 0; di < plots.length; di++) {
           var meta = chart.getDatasetMeta(di);
           for (var pi = 0; pi < meta.data.length; pi++) {
             var el = meta.data[pi];
@@ -175,7 +177,7 @@
         isDragging = true;
         dragDsi = hit.di;
         dragIdx = hit.pi;
-        highlightPoint(dragDsi, dragIdx);
+        drawHalo(dragDsi, dragIdx);
       }
 
       function onMove(e) {
@@ -185,14 +187,16 @@
         var val = pixelToValue(pos);
         chart.data.datasets[dragDsi].data[dragIdx].x = val.x;
         chart.data.datasets[dragDsi].data[dragIdx].y = val.y;
-        highlightPoint(dragDsi, dragIdx);
+        chart.update('none');
+        drawHalo(dragDsi, dragIdx);
       }
 
       function onEnd(e) {
         if (!isDragging) return;
         isDragging = false;
         chart.data.datasets[dragDsi].data.sort(function(a, b) { return a.x - b.x; });
-        highlightPoint(-1, -1);
+        chart.update('none');
+        drawHalo(-1, -1);
         dragDsi = -1;
         dragIdx = -1;
         saveChart(chart);

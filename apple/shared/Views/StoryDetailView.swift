@@ -11,6 +11,7 @@ struct StoryDetailView: View {
     @State private var playX: Int? = nil
     @State private var highlightedPoint: PointHighlight? = nil
     @State private var playTask: Task<Void, Never>? = nil
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Group {
@@ -44,13 +45,29 @@ struct StoryDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            if detail != nil {
+            if let detail = detail {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        if isPlaying { stopPlayback() }
-                        else { startPlayback() }
-                    } label: {
-                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    if detail.isOwner ?? false {
+                        Menu {
+                            Button("Add Plot", systemImage: "plus.square") {
+                                Task { await addPlot() }
+                            }
+                            Button("Add Turning Point", systemImage: "plus.circle") {
+                                Task { await addTurningPoint() }
+                            }
+                            Button("Delete Story", systemImage: "trash", role: .destructive) {
+                                Task { await deleteStory() }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    } else {
+                        Button {
+                            if isPlaying { stopPlayback() }
+                            else { startPlayback() }
+                        } label: {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        }
                     }
                 }
             }
@@ -201,6 +218,43 @@ struct StoryDetailView: View {
         playTask = nil
         isPlaying = false
         playX = nil
+    }
+
+    private func addPlot() async {
+        guard let detail = detail else { return }
+        let names = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
+        let name = names[detail.plots.count % names.count]
+        let color = detail.plots.count % ChartView.plotColors.count
+        do {
+            _ = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
+            await reloadStory()
+        } catch {}
+    }
+
+    private func addTurningPoint() async {
+        guard let detail = detail, let firstPlot = detail.plots.first else { return }
+        // Add to the first plot at center position
+        var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
+        pts.append(ChartPointPayload(plot_id: firstPlot.id, x_pos: 5000, y_val: 5000, label: "New point"))
+        do {
+            try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
+            await reloadStory()
+        } catch {}
+    }
+
+    private func deleteStory() async {
+        do {
+            try await APIClient.shared.deleteStory(storyId)
+            dismiss()
+        } catch {}
+    }
+
+    private func reloadStory() async {
+        do {
+            let d = try await APIClient.shared.getStory(storyId)
+            detail = d
+            chartPoints = d.chartPoints
+        } catch {}
     }
 
     private func loadStory() async {

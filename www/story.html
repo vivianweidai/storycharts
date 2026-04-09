@@ -36,7 +36,8 @@
   var selDi = -1, selPi = -1;
   var dragPt = null, isDragging = false, didMove = false;
   var hoverDi = -1, hoverPi = -1; // hover state
-  var playing = false, playX = -1, playTimer = null, playHighlight = null; // playback
+  var playing = false, playX = -1, playRAF = null, playHighlight = null, playStart = 0; // playback
+  var PLAY_DURATION = 8000; // ms to sweep left to right
 
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
@@ -53,19 +54,6 @@
     }
     for (var d = 0; d < g.length; d++) g[d].sort(function(a,b){ return a.x - b.x; });
     return g;
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '';
-    var d = new Date(dateStr);
-    if (isNaN(d)) return '';
-    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    var day = d.getUTCDate();
-    var suffix = 'th';
-    if (day % 10 === 1 && day !== 11) suffix = 'st';
-    else if (day % 10 === 2 && day !== 12) suffix = 'nd';
-    else if (day % 10 === 3 && day !== 13) suffix = 'rd';
-    return months[d.getUTCMonth()] + ' ' + day + suffix + ' ' + d.getUTCFullYear();
   }
 
   function draw() {
@@ -318,7 +306,7 @@
     var all = [];
     for (var d = 0; d < g.length; d++) {
       for (var i = 0; i < g[d].length; i++) {
-        all.push({ di: d, pi: i, x: g[d][i].x, y: g[d][i].y, label: g[d][i].label, plotTitle: plots[d].title });
+        all.push({ di: d, pi: i, x: g[d][i].x });
       }
     }
     all.sort(function(a, b) { return a.x - b.x; });
@@ -326,34 +314,40 @@
   }
 
   function startPlayback() {
-    var allPts = getAllPointsSorted();
-    if (allPts.length === 0) return;
     playing = true;
-    var idx = 0;
-    var dur = 2000; // ms per point
+    playStart = performance.now();
+    playHighlight = null;
+    updatePlayBtn();
+    playTick();
+  }
 
-    function step() {
-      if (!playing || idx >= allPts.length) {
-        stopPlayback();
-        return;
+  function playTick() {
+    if (!playing) return;
+    var elapsed = performance.now() - playStart;
+    var t = elapsed / PLAY_DURATION;
+    if (t > 1) { stopPlayback(); return; }
+
+    playX = Math.round(t * 10000);
+
+    // Find the latest TP the line has passed
+    var allPts = getAllPointsSorted();
+    playHighlight = null;
+    for (var i = allPts.length - 1; i >= 0; i--) {
+      if (allPts[i].x <= playX) {
+        playHighlight = { di: allPts[i].di, pi: allPts[i].pi };
+        break;
       }
-      var pt = allPts[idx];
-      playX = pt.x;
-      playHighlight = { di: pt.di, pi: pt.pi };
-      draw();
-      idx++;
-      playTimer = setTimeout(step, dur);
     }
 
-    updatePlayBtn();
-    step();
+    draw();
+    playRAF = requestAnimationFrame(playTick);
   }
 
   function stopPlayback() {
     playing = false;
     playX = -1;
     playHighlight = null;
-    if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+    if (playRAF) { cancelAnimationFrame(playRAF); playRAF = null; }
     updatePlayBtn();
     draw();
   }
@@ -518,7 +512,6 @@
     });
 
     var storyTitle = data.story.title || 'Untitled';
-    var createdDate = formatDate(data.story.created_at);
     var isOwner = data.isOwner;
     isOwnerGlobal = isOwner;
 
@@ -529,9 +522,9 @@
       '<div id="title-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
-        '<span style="margin-left:auto;font-size:0.8em;color:#888;display:flex;align-items:center;gap:8px">' +
+        '<span style="margin-left:auto;font-size:0.8em;display:flex;align-items:center;gap:8px">' +
           (isOwner ? '<span id="drag-hint" style="color:#0969da;opacity:0.7">drag points to edit</span>' : '') +
-          (createdDate ? '<span>' + createdDate + '</span>' : '') +
+          '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>' +
         '</span>' +
       '</div>' +
       '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
@@ -541,11 +534,8 @@
           '<button class="btn btn-sm btn-danger" id="del-btn" style="flex-shrink:0">del</button>' +
         '</div>' +
       '</div>' +
-      '<div style="position:relative;margin-top:12px">' +
-        '<div class="chart-wrap" style="width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
-          '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
-        '</div>' +
-        '<button type="button" id="play-btn" style="position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.85);border:1px solid #d1d9e0;border-radius:4px;padding:3px 10px;font-size:0.75em;color:#656d76;cursor:pointer;font-family:inherit;backdrop-filter:blur(4px)">play</button>' +
+      '<div class="chart-wrap" style="margin-top:12px;width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
+        '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
       '</div>' +
       '<div id="info" style="text-align:center;margin-top:10px;min-height:3em"></div>';
 

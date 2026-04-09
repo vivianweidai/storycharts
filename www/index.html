@@ -54,33 +54,30 @@
       text-align: center;
       padding-bottom: 20px;
     }
-    .create-glow {
+    .create-label {
       display: inline-block;
-      padding: 14px 36px;
-      font-size: 1em;
-      font-weight: 600;
-      font-family: inherit;
+      font: 400 1.3em/1 'Courier New', Consolas, monospace;
+      letter-spacing: .1em;
       color: #fff;
-      background: rgba(9,105,218,0.85);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 50px;
-      cursor: pointer;
-      text-shadow: 0 0 7px rgba(255,255,255,0.4), 0 0 20px rgba(140,180,255,0.3);
-      box-shadow: 0 0 12px rgba(9,105,218,0.3), 0 0 30px rgba(9,105,218,0.15);
+      white-space: nowrap;
+      text-shadow: 0 0 7px rgba(255,255,255,.4), 0 0 20px rgba(140,180,255,.2);
+      background: rgba(0,0,0,.3);
       backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      transition: box-shadow 0.3s, background 0.3s;
-      letter-spacing: 0.02em;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 50px;
+      padding: 16px 40px;
+      cursor: pointer;
+      transition: background 0.3s;
     }
-    .create-glow:hover {
-      background: rgba(9,105,218,1);
-      box-shadow: 0 0 18px rgba(9,105,218,0.5), 0 0 40px rgba(9,105,218,0.25);
+    .create-label:hover {
+      background: rgba(0,0,0,.5);
     }
-    @keyframes glow-pulse {
-      0%, 100% { box-shadow: 0 0 12px rgba(9,105,218,0.3), 0 0 30px rgba(9,105,218,0.15); }
-      50% { box-shadow: 0 0 18px rgba(9,105,218,0.45), 0 0 40px rgba(9,105,218,0.25); }
+    #create-cursor {
+      display: inline-block; width: 3px; height: 1em;
+      background: #fff; margin-left: 4px; vertical-align: text-bottom;
+      animation: blink .6s step-end infinite;
     }
-    .create-glow { animation: glow-pulse 3s ease-in-out infinite; }
-    .create-glow:hover { animation: none; }
+    @keyframes blink { 50% { opacity: 0; } }
   </style>
 </head>
 <body style="max-width:900px">
@@ -170,7 +167,7 @@
       if (user) {
         html += '<hr class="divider">';
         html += '<div class="create-section">' +
-                  '<button class="create-glow" id="create-btn">Create Story Chart</button>' +
+                  '<span class="create-label" id="create-btn"><span id="create-text"></span><span id="create-cursor"></span></span>' +
                 '</div>';
       }
 
@@ -199,6 +196,36 @@
             });
           });
         };
+
+        // Typewriter effect
+        var word = 'Create Story Chart';
+        var textEl = document.getElementById('create-text');
+        var randInt = function(min, max) { return min + Math.floor(Math.random() * (max - min)); };
+
+        function typewrite() {
+          textEl.textContent = '';
+          var delay = 0;
+          var typeDelays = [];
+          for (var i = 0; i < word.length; i++) {
+            delay += randInt(80, 200);
+            typeDelays.push(delay);
+            (function(idx, d) {
+              setTimeout(function() { textEl.textContent = word.substring(0, idx + 1); }, d);
+            })(i, delay);
+          }
+          setTimeout(function() {
+            for (var i = word.length; i >= 0; i--) {
+              (function(idx, d) {
+                setTimeout(function() {
+                  textEl.textContent = word.substring(0, idx);
+                  if (idx === 0) setTimeout(typewrite, 800);
+                }, d);
+              })(i, (word.length - i) * randInt(60, 140));
+            }
+          }, typeDelays[typeDelays.length - 1] + 2500);
+        }
+
+        typewrite();
       }
     })();
   </script>

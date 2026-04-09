@@ -13,12 +13,7 @@ struct StoryListView: View {
             } else if let error = errorMessage {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error))
             } else if stories.isEmpty {
-                VStack(spacing: 24) {
-                    ContentUnavailableView("No Stories", systemImage: "book", description: Text("No stories yet."))
-                    if auth.isAuthenticated {
-                        createButton
-                    }
-                }
+                ContentUnavailableView("No Stories", systemImage: "book", description: Text("No stories yet."))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 16) {
@@ -27,11 +22,6 @@ struct StoryListView: View {
                                 storyCard(story)
                             }
                             .buttonStyle(.plain)
-                        }
-
-                        if auth.isAuthenticated {
-                            createButton
-                                .padding(.top, 4)
                         }
                     }
                     .padding()
@@ -88,20 +78,6 @@ struct StoryListView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color(.separator), lineWidth: 1)
         )
-    }
-
-    private var createButton: some View {
-        Button {
-            Task { await createStory() }
-        } label: {
-            Label("Create a Story Chart", systemImage: "plus")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-        }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: 12))
-        .padding(.horizontal)
     }
 
     private func loadStories() async {

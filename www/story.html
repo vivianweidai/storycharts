@@ -26,11 +26,13 @@
   var selDi = -1, selPi = -1;
   var dragPt = null, isDragging = false, didMove = false;
   var hoverDi = -1, hoverPi = -1; // hover state
+  var lastHighlightedDi = -1; // last plot that had a selected TP
+  var editingDi = -1, editingPi = -1; // currently editing inline
   var playing = false, playX = -1, playRAF = null, playHighlight = null, playStart = 0; // playback
   var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
   var PLAY_SWEEP_MS = 1500; // sweep between TPs
 
-  function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
+  function plotColor(di) { return COLORS[di % COLORS.length]; }
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
   function fromX(px) { return Math.max(0, Math.min(10000, Math.round(((px - PAD) / (W - 2 * PAD)) * 10000))); }
@@ -205,9 +207,9 @@
     e.preventDefault();
     stopPlayback();
     isDragging = true; didMove = false;
-    infoEditing = false;
+    savePendingEdits(); editingDi = -1; editingPi = -1;
     dragPt = hit.pt;
-    selDi = hit.di; selPi = hit.pi;
+    selDi = hit.di; selPi = hit.pi; lastHighlightedDi = hit.di;
     draw(); updateInfo();
   }
 
@@ -229,7 +231,7 @@
       canvas.style.cursor = isOwnerGlobal ? 'grab' : 'pointer';
       if (playing) stopPlayback();
       // Persist selection so it stays when mouse leaves
-      selDi = hit.di; selPi = hit.pi;
+      selDi = hit.di; selPi = hit.pi; lastHighlightedDi = hit.di;
     } else {
       hoverDi = -1; hoverPi = -1;
       canvas.style.cursor = isOwnerGlobal ? 'grab' : 'default';
@@ -241,23 +243,22 @@
     if (!isDragging) return;
     isDragging = false;
     if (didMove) {
-      selDi = -1; selPi = -1;
-      draw(); updateInfo();
       savePoints();
     }
     dragPt = null;
+    draw(); updateInfo();
   }
 
   function onClick(e) {
     if (didMove) { didMove = false; return; }
-    infoEditing = false;
     var pos = getPos(e);
     var hit = hitPoint(pos.x, pos.y);
     if (hit) {
       if (playing) stopPlayback();
-      if (!isDragging) { selDi = hit.di; selPi = hit.pi; draw(); updateInfo(); }
+      if (!isDragging) { selDi = hit.di; selPi = hit.pi; lastHighlightedDi = hit.di; draw(); updateInfo(); }
       return;
     }
+    savePendingEdits();
     selDi = -1; selPi = -1; draw(); updateInfo();
   }
 
@@ -409,130 +410,109 @@
   }
 
   var isOwnerGlobal = false;
-  var infoEditing = false;
+
+  function savePendingEdits() {
+    if (editingDi < 0 || editingPi < 0) return;
+    var nameEl = document.getElementById('ie-name');
+    var labelEl = document.getElementById('ie-label');
+    if (!nameEl || !labelEl) { editingDi = -1; editingPi = -1; return; }
+    var plot = plots[editingDi];
+    if (!plot) { editingDi = -1; editingPi = -1; return; }
+    var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
+    if (name !== plot.title) {
+      plot.title = name;
+      api('PUT', 'plots/' + plot.id, { title: name });
+    }
+    var g = grouped();
+    var pt = g[editingDi] && g[editingDi][editingPi];
+    if (pt) {
+      var label = labelEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 60);
+      if (label !== pt.label) {
+        pt.label = label;
+        savePoints();
+      }
+    }
+  }
 
   function updateInfo() {
     var el = document.getElementById('info');
-    if (infoEditing) return;
     if (playing) { updatePlayInfo(); return; }
 
-    // Use hover state for read-only, selection state for owner
     var di = selDi >= 0 ? selDi : (!isOwnerGlobal ? hoverDi : -1);
     var pi = selDi >= 0 ? selPi : (!isOwnerGlobal ? hoverPi : -1);
 
-    if (di < 0) {
-      el.innerHTML = '';
-      return;
-    }
+    // If already editing this exact point, preserve input state
+    if (!isDragging && isOwnerGlobal && di === editingDi && pi === editingPi && di >= 0 && pi >= 0) return;
+
+    // Save any pending edits before switching
+    savePendingEdits();
+
+    if (di < 0) { el.innerHTML = ''; editingDi = -1; editingPi = -1; return; }
 
     var color = plotColor(di);
     var plot = plots[di];
-
     var g = grouped();
     var pt = (pi >= 0 && g[di]) ? g[di][pi] : null;
-    el.innerHTML =
-      '<div style="text-align:center">' +
-        '<div style="color:' + color + ';font-weight:600">' + esc(plot.title) +
-          (isOwnerGlobal ? ' <button class="btn btn-sm" id="info-edit-btn" style="margin-left:6px">edit</button>' : '') +
-        '</div>' +
-        (pt ? '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' : '') +
-      '</div>';
-    if (isOwnerGlobal && pt) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
-  }
 
-  function editTP(di, pi) {
-    infoEditing = true;
-    var el = document.getElementById('info');
-    var g = grouped();
-    var pt = g[di][pi];
-    var plot = plots[di];
-    var color = plotColor(di);
-    var selColorIdx = (plot.color >= 0) ? plot.color : di;
-    var swatches = '';
-    for (var ci = 0; ci < COLORS.length; ci++) {
-      var sel = (ci === selColorIdx);
-      swatches += '<span class="color-swatch" data-ci="' + ci + '" style="display:inline-block;width:22px;height:22px;border-radius:50%;background:' + COLORS[ci] + ';cursor:pointer;border:2.5px solid ' + (sel ? '#1f2328' : 'transparent') + ';margin:0 2px;vertical-align:middle"></span>';
-    }
-    el.innerHTML =
-      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
-        '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
-        '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0" title="Delete plot">del plot</button>' +
-      '</div>' +
-      '<div style="text-align:center;margin-bottom:6px">' + swatches + '</div>' +
-      '<div style="display:flex;gap:6px;align-items:center">' +
-        '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
-        '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0" title="Delete turning point">del tp</button>' +
-      '</div>' +
-      '<div style="text-align:center;margin-top:6px">' +
-        '<button class="btn btn-sm btn-primary" id="ie-ok">ok</button>' +
-        ' <button class="btn btn-sm" id="ie-add-tp">+ tp</button>' +
-      '</div>';
-    // Wire color swatches
-    var allSwatches = el.querySelectorAll('.color-swatch');
-    for (var si = 0; si < allSwatches.length; si++) {
-      allSwatches[si].onclick = function() {
-        selColorIdx = parseInt(this.getAttribute('data-ci'));
-        for (var j = 0; j < allSwatches.length; j++) {
-          allSwatches[j].style.border = '2.5px solid transparent';
-        }
-        this.style.border = '2.5px solid #1f2328';
-        // Live preview: update plot color and redraw chart
-        plot.color = selColorIdx;
-        var newColor = plotColor(di);
-        var nameInput = document.getElementById('ie-name');
-        nameInput.style.borderColor = newColor;
-        nameInput.style.color = newColor;
-        draw();
+    if (isOwnerGlobal && pt && !isDragging) {
+      // Auto-show inline edit
+      editingDi = di; editingPi = pi;
+      el.innerHTML =
+        '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
+          '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0" title="Delete plot">del plot</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;align-items:center">' +
+          '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0" title="Delete turning point">del tp</button>' +
+        '</div>';
+      document.getElementById('ie-del-plot').onclick = function() {
+        if (!confirm('Delete plot "' + plot.title + '" and all its turning points?')) return;
+        api('DELETE', 'plots/' + plot.id);
+        points = points.filter(function(p) { return p.plot_id !== plot.id; });
+        plots.splice(di, 1);
+        selDi = -1; selPi = -1; editingDi = -1; editingPi = -1;
+        draw(); updateInfo(); updateAddPlotBtn();
       };
+      document.getElementById('ie-del-tp').onclick = function() {
+        if (!confirm('Delete this turning point?')) return;
+        var idx = points.indexOf(pt);
+        if (idx >= 0) points.splice(idx, 1);
+        selDi = -1; selPi = -1; editingDi = -1; editingPi = -1;
+        draw(); updateInfo(); savePoints(); updateAddPlotBtn();
+      };
+    } else {
+      editingDi = -1; editingPi = -1;
+      el.innerHTML =
+        '<div style="text-align:center">' +
+          '<div style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</div>' +
+          (pt ? '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' : '') +
+        '</div>';
     }
-    document.getElementById('ie-label').focus();
-    document.getElementById('ie-ok').onclick = function() {
-      var name = document.getElementById('ie-name').value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
-      pt.label = document.getElementById('ie-label').value.trim().replace(/<[^>]*>/g, '').slice(0, 60);
-      plot.color = selColorIdx;
-      plot.title = name;
-      api('PUT', 'plots/' + plot.id, { title: name, color: selColorIdx });
-      infoEditing = false; draw(); updateInfo(); savePoints();
-    };
-    document.getElementById('ie-del-plot').onclick = function() {
-      if (!confirm('Delete plot "' + plot.title + '" and all its turning points?')) return;
-      api('DELETE', 'plots/' + plot.id);
-      points = points.filter(function(p) { return p.plot_id !== plot.id; });
-      plots.splice(di, 1);
-      selDi = -1; selPi = -1; infoEditing = false;
-      draw(); updateInfo(); updateAddPlotBtn();
-    };
-    document.getElementById('ie-del-tp').onclick = function() {
-      if (!confirm('Delete this turning point?')) return;
-      var idx = points.indexOf(pt);
-      if (idx >= 0) points.splice(idx, 1);
-      selDi = -1; selPi = -1; infoEditing = false;
-      draw(); updateInfo(); savePoints();
-    };
-    var addTpBtn = document.getElementById('ie-add-tp');
-    addTpBtn.disabled = points.length >= MAX_POINTS;
-    addTpBtn.onclick = function() {
-      if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
-      addTP(di);
-      infoEditing = false;
-    };
   }
 
   function updateAddPlotBtn() {
     var btn = document.getElementById('add-plot-btn');
-    if (!btn) return;
-    var atLimit = plots.length >= MAX_PLOTS;
-    btn.disabled = atLimit;
-    btn.title = atLimit ? 'Maximum ' + MAX_PLOTS + ' plots' : '';
+    if (btn) {
+      var atLimit = plots.length >= MAX_PLOTS;
+      btn.disabled = atLimit;
+      btn.title = atLimit ? 'Maximum ' + MAX_PLOTS + ' plots' : 'Press P to add a new plot';
+    }
+    var sceneBtn = document.getElementById('add-scene-btn');
+    if (sceneBtn) {
+      var atPtLimit = points.length >= MAX_POINTS || plots.length === 0;
+      sceneBtn.disabled = atPtLimit;
+      sceneBtn.title = atPtLimit ? 'Maximum ' + MAX_POINTS + ' turning points' : 'Press A to add a turning point';
+    }
   }
 
   function addPlot() {
     if (plots.length >= MAX_PLOTS) { alert('Maximum ' + MAX_PLOTS + ' plots per story. Delete a plot to make room.'); return; }
+    savePendingEdits();
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E','Plot F','Plot G','Plot H','Plot I','Plot J'];
     var name = names[plots.length % names.length];
-    var ci = plots.length % COLORS.length;
-    api('POST', 'stories/' + storyId + '/plots', { title: name, color: ci }).then(function(r) {
-      plots.push({ id: r.id, title: name, color: ci });
+    api('POST', 'stories/' + storyId + '/plots', { title: name, color: -1 }).then(function(r) {
+      plots.push({ id: r.id, title: name, color: -1 });
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }
@@ -540,11 +520,29 @@
     });
   }
 
-  function addTP(di) {
+  function addTP(di, autoSelect) {
     if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
+    savePendingEdits(); editingDi = -1; editingPi = -1;
     var plot = plots[di];
-    points.push({ plot_id: plot.id, x: 5000, y: 5000, label: 'New point' });
-    savePoints(); draw(); updateInfo();
+    var newPt = { plot_id: plot.id, x: 5000, y: 5000, label: 'New point' };
+    points.push(newPt);
+    if (autoSelect) {
+      var g = grouped();
+      for (var i = 0; i < g[di].length; i++) {
+        if (g[di][i] === newPt) { selDi = di; selPi = i; lastHighlightedDi = di; break; }
+      }
+    }
+    savePoints(); draw(); updateInfo(); updateAddPlotBtn();
+  }
+
+  function addScene() {
+    if (plots.length === 0) return;
+    if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story.'); return; }
+    var di;
+    if (selDi >= 0) di = selDi;
+    else if (lastHighlightedDi >= 0 && lastHighlightedDi < plots.length) di = lastHighlightedDi;
+    else di = Math.floor(Math.random() * plots.length);
+    addTP(di, true);
   }
 
   function savePoints() {
@@ -584,7 +582,7 @@
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
         '<span style="margin-left:auto;font-size:0.8em;display:flex;align-items:center;gap:8px">' +
-          (isOwner ? '<button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em">+ add plot</button>' :
+          (isOwner ? '<button type="button" class="btn btn-sm" id="add-scene-btn" style="font-size:0.85em" title="Press A to add a turning point">+ add scene</button> <button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em" title="Press P to add a new plot">+ add plot</button>' :
                      '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>') +
         '</span>' +
       '</div>' +
@@ -603,6 +601,7 @@
     // Top-right button
     if (isOwner) {
       document.getElementById('add-plot-btn').onclick = addPlot;
+      document.getElementById('add-scene-btn').onclick = addScene;
     } else {
       document.getElementById('play-btn').onclick = togglePlayback;
       setTimeout(function() { if (!playing) startPlayback(); }, 3000);
@@ -666,20 +665,22 @@
     });
 
     window.addEventListener('keydown', function(e) {
-      if (!isOwnerGlobal || infoEditing || isDragging || playing) return;
+      if (!isOwnerGlobal || isDragging || playing) return;
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'p') { e.preventDefault(); addPlot(); return; }
+      if (e.key === 'a') { e.preventDefault(); addScene(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selDi < 0 || selPi < 0) return;
-        // Don't intercept if user is typing in an input
-        var tag = document.activeElement && document.activeElement.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
         e.preventDefault();
+        savePendingEdits(); editingDi = -1; editingPi = -1;
         var g = grouped();
         var pt = g[selDi] && g[selDi][selPi];
         if (!pt) return;
         var idx = points.indexOf(pt);
         if (idx >= 0) points.splice(idx, 1);
         selDi = -1; selPi = -1;
-        draw(); updateInfo(); savePoints();
+        draw(); updateInfo(); savePoints(); updateAddPlotBtn();
       }
     });
 

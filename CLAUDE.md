@@ -66,3 +66,4 @@ storycharts/
 - Push to `main` auto-deploys to Cloudflare
 - `POST /api/admin/reset` — delete all data (requires auth)
 - Always work on `main`, commit + push after changes
+- After completing a set of changes, always commit and push without being asked

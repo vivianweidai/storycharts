@@ -228,6 +228,8 @@
       hoverDi = hit.di; hoverPi = hit.pi;
       canvas.style.cursor = isOwnerGlobal ? 'grab' : 'pointer';
       if (playing) stopPlayback();
+      // Persist selection so it stays when mouse leaves
+      selDi = hit.di; selPi = hit.pi;
     } else {
       hoverDi = -1; hoverPi = -1;
       canvas.style.cursor = isOwnerGlobal ? 'grab' : 'default';
@@ -248,7 +250,6 @@
 
   function onClick(e) {
     if (didMove) { didMove = false; return; }
-    if (!isOwnerGlobal) return; // read-only: hover handles everything
     infoEditing = false;
     var pos = getPos(e);
     var hit = hitPoint(pos.x, pos.y);
@@ -660,7 +661,7 @@
     window.addEventListener('touchend', onEnd);
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('mouseleave', function() {
-      if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); if (!isOwnerGlobal) updateInfo(); }
+      if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); }
     });
 
   })();

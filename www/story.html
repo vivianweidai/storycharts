@@ -31,10 +31,12 @@
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
   var MAX_TITLE = 60;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-  var storyId, plots, points; // points: [{plot_id, x, y, label}]
+  var storyId, plots, points;
   var canvas, ctx, W, H, PAD = 20;
-  var selDi = -1, selPi = -1; // -1=none, selPi=-1 means plot selected
+  var selDi = -1, selPi = -1;
   var dragPt = null, isDragging = false, didMove = false;
+  var hoverDi = -1, hoverPi = -1; // hover state
+  var playing = false, playX = -1, playTimer = null, playHighlight = null; // playback
 
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
@@ -51,6 +53,19 @@
     }
     for (var d = 0; d < g.length; d++) g[d].sort(function(a,b){ return a.x - b.x; });
     return g;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    var d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var day = d.getUTCDate();
+    var suffix = 'th';
+    if (day % 10 === 1 && day !== 11) suffix = 'st';
+    else if (day % 10 === 2 && day !== 12) suffix = 'nd';
+    else if (day % 10 === 3 && day !== 13) suffix = 'rd';
+    return months[d.getUTCMonth()] + ' ' + day + suffix + ' ' + d.getUTCFullYear();
   }
 
   function draw() {
@@ -75,10 +90,20 @@
 
     var g = grouped();
 
-    // Halo on selected/dragged point (drawn first, behind everything)
+    // Playback vertical line
+    if (playing && playX >= 0) {
+      var lx = toX(playX);
+      ctx.strokeStyle = 'rgba(9,105,218,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(lx, PAD); ctx.lineTo(lx, H - PAD); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Halo on selected/dragged point
     var hp = null;
     if (dragPt && selDi >= 0) {
-      hp = dragPt; // always track the actual dragged object
+      hp = dragPt;
     } else if (selDi >= 0 && selPi >= 0 && g[selDi] && g[selDi][selPi]) {
       hp = g[selDi][selPi];
     }
@@ -94,7 +119,7 @@
     for (var d = 0; d < g.length; d++) {
       var pts = g[d]; if (pts.length < 2) continue;
       ctx.strokeStyle = COLORS[d % COLORS.length];
-      ctx.lineWidth = (selDi === d && selPi < 0) ? 4 : 2;
+      ctx.lineWidth = (selDi === d && selPi < 0) ? 4 : ((hoverDi === d && hoverPi < 0) ? 3 : 2);
       ctx.beginPath();
       ctx.moveTo(toX(pts[0].x), toY(pts[0].y));
       for (var i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y));
@@ -104,15 +129,86 @@
     // Points
     for (var d = 0; d < g.length; d++) {
       for (var i = 0; i < g[d].length; i++) {
+        var isHover = (d === hoverDi && i === hoverPi);
+        var isPlayHL = (playHighlight && playHighlight.di === d && playHighlight.pi === i);
+        var r = (isHover || isPlayHL) ? 7 : 5;
         ctx.fillStyle = COLORS[d % COLORS.length];
         ctx.beginPath();
-        ctx.arc(toX(g[d][i].x), toY(g[d][i].y), 5, 0, Math.PI * 2);
+        ctx.arc(toX(g[d][i].x), toY(g[d][i].y), r, 0, Math.PI * 2);
         ctx.fill();
       }
     }
+
+    // Tooltip for hover or playback highlight
+    var tipPt = null, tipDi = -1;
+    if (playHighlight && g[playHighlight.di] && g[playHighlight.di][playHighlight.pi]) {
+      tipPt = g[playHighlight.di][playHighlight.pi];
+      tipDi = playHighlight.di;
+    } else if (hoverDi >= 0 && hoverPi >= 0 && g[hoverDi] && g[hoverDi][hoverPi]) {
+      tipPt = g[hoverDi][hoverPi];
+      tipDi = hoverDi;
+    } else if (hoverDi >= 0 && hoverPi < 0) {
+      // Hovering a line — show plot name
+      var plot = plots[hoverDi];
+      if (plot) {
+        drawLineTooltip(plot.title, hoverDi);
+      }
+    }
+
+    if (tipPt) {
+      var label = tipPt.label || 'Turning point';
+      var plotName = plots[tipDi] ? plots[tipDi].title : '';
+      var text = plotName ? plotName + ': ' + label : label;
+      drawTooltip(toX(tipPt.x), toY(tipPt.y), text, tipDi);
+    }
   }
 
-  // Hit test: point first, then line
+  function drawTooltip(px, py, text, di) {
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+    var tw = ctx.measureText(text).width;
+    var pad = 6, h = 22;
+    var tx = px - tw / 2 - pad;
+    var ty = py - 32;
+    // Keep in bounds
+    if (tx < 2) tx = 2;
+    if (tx + tw + pad * 2 > W - 2) tx = W - tw - pad * 2 - 2;
+    if (ty < 2) { ty = py + 14; }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.strokeStyle = COLORS[di % COLORS.length] + '60';
+    ctx.lineWidth = 1;
+    roundRect(ctx, tx, ty, tw + pad * 2, h, 4);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#1f2328';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, tx + pad, ty + h / 2);
+  }
+
+  function drawLineTooltip(text, di) {
+    var g = grouped();
+    var pts = g[di];
+    if (!pts || pts.length === 0) return;
+    // Show at midpoint of line
+    var mid = pts[Math.floor(pts.length / 2)];
+    drawTooltip(toX(mid.x), toY(mid.y), text, di);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // Hit test
   function hitPoint(cx, cy) {
     var g = grouped();
     var best = null, bestD = 22;
@@ -158,6 +254,7 @@
     var hit = hitPoint(pos.x, pos.y);
     if (!hit) return;
     e.preventDefault();
+    stopPlayback();
     isDragging = true; didMove = false;
     infoEditing = false;
     dragPt = hit.pt;
@@ -166,11 +263,32 @@
   }
 
   function onMove(e) {
-    if (!isDragging || !dragPt) return;
-    e.preventDefault(); didMove = true;
+    if (isDragging && dragPt) {
+      e.preventDefault(); didMove = true;
+      var pos = getPos(e);
+      dragPt.x = fromX(pos.x); dragPt.y = fromY(pos.y);
+      draw(); updateInfo();
+      return;
+    }
+    // Hover detection (mouse only)
+    if (e.touches) return;
     var pos = getPos(e);
-    dragPt.x = fromX(pos.x); dragPt.y = fromY(pos.y);
-    draw(); updateInfo();
+    var oldDi = hoverDi, oldPi = hoverPi;
+    var hit = hitPoint(pos.x, pos.y);
+    if (hit) {
+      hoverDi = hit.di; hoverPi = hit.pi;
+      canvas.style.cursor = isOwnerGlobal ? 'grab' : 'pointer';
+    } else {
+      var lh = hitLine(pos.x, pos.y);
+      if (lh) {
+        hoverDi = lh.di; hoverPi = -1;
+        canvas.style.cursor = 'pointer';
+      } else {
+        hoverDi = -1; hoverPi = -1;
+        canvas.style.cursor = isOwnerGlobal ? 'grab' : 'default';
+      }
+    }
+    if (hoverDi !== oldDi || hoverPi !== oldPi) draw();
   }
 
   function onEnd() {
@@ -188,10 +306,66 @@
     if (didMove) { didMove = false; return; }
     infoEditing = false;
     var pos = getPos(e);
-    if (hitPoint(pos.x, pos.y)) return; // handled by onStart
+    if (hitPoint(pos.x, pos.y)) return;
     var lh = hitLine(pos.x, pos.y);
     if (lh) { selDi = lh.di; selPi = -1; draw(); updateInfo(); return; }
     selDi = -1; selPi = -1; draw(); updateInfo();
+  }
+
+  // --- Playback ---
+  function getAllPointsSorted() {
+    var g = grouped();
+    var all = [];
+    for (var d = 0; d < g.length; d++) {
+      for (var i = 0; i < g[d].length; i++) {
+        all.push({ di: d, pi: i, x: g[d][i].x, y: g[d][i].y, label: g[d][i].label, plotTitle: plots[d].title });
+      }
+    }
+    all.sort(function(a, b) { return a.x - b.x; });
+    return all;
+  }
+
+  function startPlayback() {
+    var allPts = getAllPointsSorted();
+    if (allPts.length === 0) return;
+    playing = true;
+    var idx = 0;
+    var dur = 2000; // ms per point
+
+    function step() {
+      if (!playing || idx >= allPts.length) {
+        stopPlayback();
+        return;
+      }
+      var pt = allPts[idx];
+      playX = pt.x;
+      playHighlight = { di: pt.di, pi: pt.pi };
+      draw();
+      idx++;
+      playTimer = setTimeout(step, dur);
+    }
+
+    updatePlayBtn();
+    step();
+  }
+
+  function stopPlayback() {
+    playing = false;
+    playX = -1;
+    playHighlight = null;
+    if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+    updatePlayBtn();
+    draw();
+  }
+
+  function togglePlayback() {
+    if (playing) stopPlayback();
+    else startPlayback();
+  }
+
+  function updatePlayBtn() {
+    var btn = document.getElementById('play-btn');
+    if (btn) btn.textContent = playing ? 'pause' : 'play';
   }
 
   var isOwnerGlobal = false;
@@ -199,9 +373,8 @@
 
   function updateInfo() {
     var el = document.getElementById('info');
-    if (infoEditing) return; // don't clobber while editing
+    if (infoEditing) return;
 
-    // Nothing selected — show add plot button
     if (selDi < 0) {
       el.innerHTML = isOwnerGlobal ?
         '<button class="btn btn-sm btn-primary" id="add-plot-btn">+ add plot</button>' : '';
@@ -213,7 +386,6 @@
     var plot = plots[selDi];
 
     if (selPi >= 0) {
-      // TP selected — show label, coords, edit
       var g = grouped();
       var pt = g[selDi][selPi];
       el.innerHTML =
@@ -225,7 +397,6 @@
         '<div style="font-size:0.8em;color:#888">(' + pt.x + ', ' + pt.y + ')</div>';
       if (isOwnerGlobal) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
     } else {
-      // Plot selected — show name, desc, edit, add tp
       el.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
           '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
@@ -245,7 +416,6 @@
     if (b) b.onclick = addPlot;
   }
 
-  // --- Inline edit: Plot ---
   function editPlot(di) {
     infoEditing = true;
     var el = document.getElementById('info');
@@ -276,7 +446,6 @@
     };
   }
 
-  // --- Inline edit: TP ---
   function editTP(di, pi) {
     infoEditing = true;
     var el = document.getElementById('info');
@@ -305,13 +474,11 @@
     };
   }
 
-  // --- Add plot ---
   function addPlot() {
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E'];
     var name = names[plots.length % names.length];
     api('POST', 'stories/' + storyId + '/plots', { title: name, description: '' }).then(function(r) {
       plots.push({ id: r.id, title: name, description: '' });
-      // Add 3 random TPs
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }
@@ -319,7 +486,6 @@
     });
   }
 
-  // --- Add TP to selected plot ---
   function addTP(di) {
     var plot = plots[di];
     points.push({ plot_id: plot.id, x: 5000, y: 5000, label: 'New point' });
@@ -352,17 +518,21 @@
     });
 
     var storyTitle = data.story.title || 'Untitled';
+    var createdDate = formatDate(data.story.created_at);
     var isOwner = data.isOwner;
     isOwnerGlobal = isOwner;
 
     var borderColor = isOwner ? '#0969da' : '#8ab';
-    var bgColor = isOwner ? '#eef4fb' : '#eef4fb';
+    var bgColor = '#eef4fb';
 
     document.getElementById('content').innerHTML =
-      '<div id="title-row" style="display:flex;align-items:center;gap:8px">' +
+      '<div id="title-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
-        (isOwner ? '<span id="drag-hint" style="margin-left:auto;font-size:0.75em;color:#0969da;opacity:0.7">drag points to edit</span>' : '') +
+        '<span style="margin-left:auto;font-size:0.8em;color:#888;display:flex;align-items:center;gap:8px">' +
+          (isOwner ? '<span id="drag-hint" style="color:#0969da;opacity:0.7">drag points to edit</span>' : '') +
+          (createdDate ? '<span>' + createdDate + '</span>' : '') +
+        '</span>' +
       '</div>' +
       '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
         '<div style="display:flex;gap:6px;align-items:center">' +
@@ -371,10 +541,16 @@
           '<button class="btn btn-sm btn-danger" id="del-btn" style="flex-shrink:0">del</button>' +
         '</div>' +
       '</div>' +
-      '<div class="chart-wrap" style="margin-top:12px;width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
-        '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
+      '<div style="position:relative;margin-top:12px">' +
+        '<div class="chart-wrap" style="width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
+          '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
+        '</div>' +
+        '<button type="button" id="play-btn" style="position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.85);border:1px solid #d1d9e0;border-radius:4px;padding:3px 10px;font-size:0.75em;color:#656d76;cursor:pointer;font-family:inherit;backdrop-filter:blur(4px)">play</button>' +
       '</div>' +
       '<div id="info" style="text-align:center;margin-top:10px;min-height:3em"></div>';
+
+    // Play button
+    document.getElementById('play-btn').onclick = togglePlayback;
 
     // Inline title edit
     if (isOwner) {
@@ -429,6 +605,9 @@
     window.addEventListener('mouseup', onEnd);
     window.addEventListener('touchend', onEnd);
     canvas.addEventListener('click', onClick);
+    canvas.addEventListener('mouseleave', function() {
+      if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); }
+    });
 
     // Wave effect on hint after 3s
     if (isOwner) {

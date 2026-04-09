@@ -45,7 +45,7 @@ class AuthManager: NSObject, ObservableObject {
 
     private func performWebAuth() async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
-            let authURL = URL(string: "https://storycharts.com/cdn-cgi/access/login/storycharts.com?redirect_url=https://storycharts.com/api/auth/me")!
+            let authURL = URL(string: "https://storycharts.com/api/auth/login-app")!
             let scheme = "storycharts"
 
             let session = ASWebAuthenticationSession(
@@ -60,7 +60,16 @@ class AuthManager: NSObject, ObservableObject {
                     }
                     return
                 }
-                continuation.resume(throwing: AuthError.failed("No callback received"))
+
+                guard let callbackURL = callbackURL,
+                      let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+                      let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
+                      !token.isEmpty else {
+                    continuation.resume(throwing: AuthError.failed("No token received"))
+                    return
+                }
+
+                continuation.resume(returning: token)
             }
 
             session.prefersEphemeralWebBrowserSession = false

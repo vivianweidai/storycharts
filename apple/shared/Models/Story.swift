@@ -4,8 +4,9 @@ struct Story: Codable, Identifiable {
     let id: Int
     var title: String
     let userid: String
-    let email: String
     let created_at: String?
+
+    var email: String { userid }
 }
 
 struct Plot: Codable, Identifiable {
@@ -32,5 +33,29 @@ struct StoryDetail: Codable {
     let story: Story
     let plots: [Plot]
     let chartPoints: [ChartPoint]
-    let isOwner: Bool
+    let isOwner: Bool?
+}
+
+// MARK: - List API models (lightweight, inline plots+points)
+
+struct StoryListItem: Codable, Identifiable {
+    let id: Int
+    let title: String
+    let userid: String
+    let created_at: String?
+    let plots: [StoryListPlot]
+
+    var email: String { userid }
+}
+
+struct StoryListPlot: Codable, Identifiable {
+    let id: Int
+    let title: String
+    let color: Int?
+    let points: [StoryListPoint]
+}
+
+struct StoryListPoint: Codable {
+    let x: Int
+    let y: Int
 }

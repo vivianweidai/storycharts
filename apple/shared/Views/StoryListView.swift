@@ -2,7 +2,7 @@ import SwiftUI
 
 struct StoryListView: View {
     @EnvironmentObject var auth: AuthManager
-    @State private var stories: [Story] = []
+    @State private var stories: [StoryListItem] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -13,19 +13,28 @@ struct StoryListView: View {
             } else if let error = errorMessage {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error))
             } else if stories.isEmpty {
-                ContentUnavailableView("No Stories", systemImage: "book", description: Text("No stories yet."))
-            } else {
-                List(stories) { story in
-                    NavigationLink(destination: StoryDetailView(storyId: story.id)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(story.title)
-                                .font(.headline)
-                            Text(story.email)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
+                VStack(spacing: 24) {
+                    ContentUnavailableView("No Stories", systemImage: "book", description: Text("No stories yet."))
+                    if auth.isAuthenticated {
+                        createButton
                     }
+                }
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(stories) { story in
+                            NavigationLink(destination: StoryDetailView(storyId: story.id)) {
+                                storyCard(story)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if auth.isAuthenticated {
+                            createButton
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding()
                 }
             }
         }
@@ -58,6 +67,43 @@ struct StoryListView: View {
         }
     }
 
+    private func storyCard(_ story: StoryListItem) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ChartThumbnailView(plots: story.plots)
+                .padding(12)
+
+            Divider()
+
+            Text(story.title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+        }
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 1)
+        )
+    }
+
+    private var createButton: some View {
+        Button {
+            Task { await createStory() }
+        } label: {
+            Label("Create a Story Chart", systemImage: "plus")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.roundedRectangle(radius: 12))
+        .padding(.horizontal)
+    }
+
     private func loadStories() async {
         do {
             stories = try await APIClient.shared.listStories()
@@ -82,7 +128,7 @@ struct StoryListView: View {
 
     private func createStory() async {
         do {
-            let result = try await APIClient.shared.createStory(title: "My Story")
+            _ = try await APIClient.shared.createStory(title: "My Story")
             // Reload to show new story
             await loadStories()
         } catch APIError.unauthorized {

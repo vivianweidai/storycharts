@@ -13,7 +13,7 @@ class APIClient {
 
     // MARK: - Stories
 
-    func listStories() async throws -> [Story] {
+    func listStories() async throws -> [StoryListItem] {
         return try await get("stories")
     }
 
@@ -36,14 +36,14 @@ class APIClient {
     // MARK: - Plots
 
     func createPlot(storyId: Int, title: String, color: Int = -1) async throws -> CreateResponse {
-        return try await post("stories/\(storyId)/plots", body: [
+        return try await post("stories/\(storyId)/plots", bodyRaw: [
             "title": title,
             "color": color
         ])
     }
 
     func updatePlot(_ id: Int, title: String, color: Int = -1) async throws {
-        let _: OKResponse = try await put("plots/\(id)", body: [
+        let _: OKResponse = try await put("plots/\(id)", bodyRaw: [
             "title": title,
             "color": color
         ])
@@ -87,6 +87,10 @@ class APIClient {
 
     private func put<T: Decodable>(_ path: String, body: [String: String]) async throws -> T {
         return try await request(path, method: "PUT", body: body)
+    }
+
+    private func put<T: Decodable>(_ path: String, bodyRaw: [String: Any]) async throws -> T {
+        return try await request(path, method: "PUT", bodyRaw: bodyRaw)
     }
 
     private func delete<T: Decodable>(_ path: String) async throws -> T {

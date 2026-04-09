@@ -16,7 +16,7 @@ struct StoryDetailView: View {
                         ChartView(
                             plots: detail.plots,
                             chartPoints: chartPoints,
-                            isEditable: detail.isOwner,
+                            isEditable: detail.isOwner ?? false,
                             onPointDragged: { point, location in
                                 handleDrag(point: point, location: location)
                             }

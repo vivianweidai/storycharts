@@ -67,7 +67,7 @@
 			children = (
 				B100000010 /* Story.swift */,
 			);
-			path = models;
+			path = Models;
 			sourceTree = "<group>";
 		};
 		D000000012 /* API */ = {
@@ -76,7 +76,7 @@
 				B100000011 /* APIClient.swift */,
 				B100000015 /* AuthManager.swift */,
 			);
-			path = api;
+			path = API;
 			sourceTree = "<group>";
 		};
 		D000000013 /* Views */ = {
@@ -86,7 +86,7 @@
 				B100000013 /* StoryListView.swift */,
 				B100000014 /* StoryDetailView.swift */,
 			);
-			path = views;
+			path = Views;
 			sourceTree = "<group>";
 		};
 		D000000020 /* iPhone */ = {

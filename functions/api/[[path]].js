@@ -12,6 +12,13 @@ export async function onRequest(context) {
 
   try {
     if (path === '/auth/login') return Response.redirect(url.origin + '/', 302);
+    if (path === '/auth/login-app') {
+      // iOS app auth: after CF Access authenticates, redirect with token to custom scheme
+      if (!user) return Response.redirect(url.origin + '/', 302);
+      const cookie = (request.headers.get('Cookie') || '').match(/CF_Authorization=([^;]+)/);
+      const token = cookie ? cookie[1] : '';
+      return Response.redirect(`storycharts://auth?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`, 302);
+    }
     if (path === '/auth/me') return json(user);
 
     const storyM = path.match(/^\/stories\/(\d+)$/);

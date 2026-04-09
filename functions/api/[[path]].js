@@ -143,7 +143,7 @@ async function createStory(env, user, body) {
     plotIds.push(pr.meta.last_row_id);
   }
 
-  const tpLabels = {
+  const sceneLabels = {
     Internal: ['Self-doubt', 'Realization', 'Inner peace', 'Fear strikes', 'Courage found', 'Identity crisis', 'Acceptance', 'Breakdown'],
     Relationship: ['First meeting', 'Trust broken', 'Reconciliation', 'Betrayal', 'Deep bond', 'Argument', 'Sacrifice', 'Forgiveness'],
     External: ['Obstacle appears', 'Small victory', 'Setback', 'Ally joins', 'Enemy revealed', 'Battle', 'Escape', 'Confrontation'],
@@ -156,7 +156,7 @@ async function createStory(env, user, body) {
   for (let pi = 0; pi < plotIds.length; pi++) {
     const n = Math.min(3 + Math.floor(Math.random() * 6), 100 - totalPts);
     totalPts += n;
-    const labels = tpLabels[names[pi]] || tpLabels.Internal;
+    const labels = sceneLabels[names[pi]] || sceneLabels.Internal;
     const shuffled = labels.slice().sort(() => Math.random() - 0.5);
     const pts = [];
     for (let i = 0; i < n; i++) pts.push({ x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: shuffled[i % shuffled.length] });
@@ -239,8 +239,6 @@ async function saveChartPoints(env, user, storyId, body) {
 // --- Admin ---
 
 async function resetAll(env) {
-  try { await env.DB.prepare('DELETE FROM turning_points').run(); } catch {}
-  try { await env.DB.prepare('DELETE FROM scenes').run(); } catch {}
   await env.DB.batch([
     env.DB.prepare('DELETE FROM chart_points'),
     env.DB.prepare('DELETE FROM plots'),

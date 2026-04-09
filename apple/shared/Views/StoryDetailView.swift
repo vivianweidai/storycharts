@@ -52,8 +52,8 @@ struct StoryDetailView: View {
                             Button("Add Plot", systemImage: "plus.square") {
                                 Task { await addPlot() }
                             }
-                            Button("Add Turning Point", systemImage: "plus.circle") {
-                                Task { await addTurningPoint() }
+                            Button("Add Scene", systemImage: "plus.circle") {
+                                Task { await addScene() }
                             }
                             Button("Delete Story", systemImage: "trash", role: .destructive) {
                                 Task { await deleteStory() }
@@ -231,7 +231,7 @@ struct StoryDetailView: View {
         } catch {}
     }
 
-    private func addTurningPoint() async {
+    private func addScene() async {
         guard let detail = detail, let firstPlot = detail.plots.first else { return }
         // Add to the first plot at center position
         var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }

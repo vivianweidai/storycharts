@@ -19,18 +19,18 @@
   <script src="/app.js"></script>
   <script>
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0','#2a9d8f','#e07098','#8a6540','#5050b0','#e08050'];
-  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_POINTS = 100;
+  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_SCENES = 100;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points;
   var canvas, ctx, W, H, PAD = 20;
   var selDi = -1, selPi = -1;
   var dragPt = null, isDragging = false, didMove = false;
   var hoverDi = -1, hoverPi = -1; // hover state
-  var lastHighlightedDi = -1; // last plot that had a selected TP
+  var lastHighlightedDi = -1; // last plot that had a selected scene
   var editingDi = -1, editingPi = -1; // currently editing inline
   var playing = false, playX = -1, playRAF = null, playHighlight = null, playStart = 0; // playback
   var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
-  var PLAY_SWEEP_MS = 1500; // sweep between TPs
+  var PLAY_SWEEP_MS = 1500; // sweep between scenes
 
   function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
   function nextFreeColor() {
@@ -143,7 +143,7 @@
     }
 
     if (tipPt) {
-      var label = tipPt.label || 'Turning point';
+      var label = tipPt.label || 'Scene';
       drawTooltip(toX(tipPt.x), toY(tipPt.y), label, tipDi);
     }
   }
@@ -295,13 +295,13 @@
     if (allPts.length === 0) return [];
     var segs = [];
     var t = 0;
-    // Sweep from 0 to first TP
+    // Sweep from 0 to first scene
     var firstX = allPts[0].x;
     var sweepDur = firstX > 0 ? PLAY_SWEEP_MS * (firstX / 10000) : 0;
     var pause = pauseForLabel(allPts[0].label);
     segs.push({ startX: 0, endX: firstX, pt: allPts[0], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + pause });
     t = segs[0].pauseEnd;
-    // Between TPs
+    // Between scenes
     for (var i = 1; i < allPts.length; i++) {
       var dist = allPts[i].x - allPts[i - 1].x;
       sweepDur = PLAY_SWEEP_MS * (dist / 10000);
@@ -325,7 +325,7 @@
     playing = true;
     playHighlight = null;
 
-    // If a TP is selected (via hover on read-only), start from its segment
+    // If a scene is selected (via hover on read-only), start from its segment
     var offset = 0;
     var startDi = hoverDi >= 0 ? hoverDi : selDi;
     var startPi = hoverPi >= 0 ? hoverPi : selPi;
@@ -333,7 +333,7 @@
       for (var i = 0; i < playSegments.length; i++) {
         var seg = playSegments[i];
         if (seg.pt && seg.pt.di === startDi && seg.pt.pi === startPi) {
-          offset = seg.sweepEnd; // start at the pause phase of this TP
+          offset = seg.sweepEnd; // start at the pause phase of this scene
           break;
         }
       }
@@ -365,7 +365,7 @@
       playX = Math.round(seg.startX + (seg.endX - seg.startX) * t);
       playHighlight = null;
     } else {
-      // Paused at TP
+      // Paused at scene
       playX = seg.endX;
       playHighlight = seg.pt ? { di: seg.pt.di, pi: seg.pt.pi } : null;
     }
@@ -387,7 +387,7 @@
         el.innerHTML =
           '<div style="text-align:center">' +
             '<div style="color:' + color + ';font-weight:600">' + esc(plot ? plot.title : '') + '</div>' +
-            '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' +
+            '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Scene') + '</div>' +
           '</div>';
         return;
       }
@@ -469,8 +469,8 @@
           '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0">del</button>' +
         '</div>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
-          '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
-          '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0">del</button>' +
+          '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-scene" style="flex-shrink:0">del</button>' +
         '</div>';
       document.getElementById('ie-del-plot').onclick = function() {
         api('DELETE', 'plots/' + plot.id);
@@ -479,7 +479,7 @@
         selDi = -1; selPi = -1; editingDi = -1; editingPi = -1;
         draw(); updateInfo(); updateAddPlotBtn();
       };
-      document.getElementById('ie-del-tp').onclick = function() {
+      document.getElementById('ie-del-scene').onclick = function() {
         var idx = points.indexOf(pt);
         if (idx >= 0) points.splice(idx, 1);
         selDi = -1; selPi = -1; editingDi = -1; editingPi = -1;
@@ -490,7 +490,7 @@
       el.innerHTML =
         '<div style="text-align:center">' +
           '<div style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</div>' +
-          (pt ? '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' : '') +
+          (pt ? '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Scene') + '</div>' : '') +
         '</div>';
     }
   }
@@ -504,9 +504,9 @@
     }
     var sceneBtn = document.getElementById('add-scene-btn');
     if (sceneBtn) {
-      var atPtLimit = points.length >= MAX_POINTS || plots.length === 0;
+      var atPtLimit = points.length >= MAX_SCENES || plots.length === 0;
       sceneBtn.disabled = atPtLimit;
-      sceneBtn.title = atPtLimit ? 'Maximum ' + MAX_POINTS + ' turning points' : 'Press A to add a turning point';
+      sceneBtn.title = atPtLimit ? 'Maximum ' + MAX_SCENES + ' scenes' : 'Press A to add a scene';
     }
   }
 
@@ -525,8 +525,8 @@
     });
   }
 
-  function addTP(di, autoSelect) {
-    if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
+  function addSceneToPlot(di, autoSelect) {
+    if (points.length >= MAX_SCENES) { alert('Maximum ' + MAX_SCENES + ' scenes per story. Delete some to make room.'); return; }
     savePendingEdits(); editingDi = -1; editingPi = -1;
     var plot = plots[di];
     var newPt = { plot_id: plot.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' };
@@ -542,12 +542,12 @@
 
   function addScene() {
     if (plots.length === 0) return;
-    if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story.'); return; }
+    if (points.length >= MAX_SCENES) { alert('Maximum ' + MAX_SCENES + ' scenes per story.'); return; }
     var di;
     if (selDi >= 0) di = selDi;
     else if (lastHighlightedDi >= 0 && lastHighlightedDi < plots.length) di = lastHighlightedDi;
     else di = Math.floor(Math.random() * plots.length);
-    addTP(di, true);
+    addSceneToPlot(di, true);
   }
 
   function savePoints() {
@@ -587,7 +587,7 @@
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
         '<span style="margin-left:auto;font-size:0.8em;display:flex;align-items:center;gap:8px">' +
-          (isOwner ? '<button type="button" class="btn btn-sm" id="add-scene-btn" style="font-size:0.85em" title="Press A to add a turning point">+ add scene</button> <button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em" title="Press P to add a new plot">+ add plot</button>' :
+          (isOwner ? '<button type="button" class="btn btn-sm" id="add-scene-btn" style="font-size:0.85em" title="Press A to add a scene">+ add scene</button> <button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em" title="Press P to add a new plot">+ add plot</button>' :
                      '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>') +
         '</span>' +
       '</div>' +

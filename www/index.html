@@ -184,24 +184,28 @@
       if (createBtn) {
         createBtn.onclick = function() {
           if (!user) { window.location.href = '/api/auth/login'; return; }
-          showModal('Create Story Chart', [
-            { label: 'Title', name: 'title', value: '' }
-          ], function(data) {
-            var title = data.title.trim() || 'Untitled';
-            api('POST', 'stories', { title: title }).then(function(result) {
-              window.location.href = '/story.html?id=' + result.id;
-            }).catch(function(e) {
-              alert('Failed to create story: ' + e.message);
-            });
+          createBtn.style.pointerEvents = 'none';
+          createBtn.style.opacity = '0.6';
+          api('POST', 'stories', { title: 'My Story' }).then(function(result) {
+            window.location.href = '/story.html?id=' + result.id;
+          }).catch(function(e) {
+            alert('Failed to create story: ' + e.message);
+            createBtn.style.pointerEvents = '';
+            createBtn.style.opacity = '';
           });
         };
 
-        // Typewriter effect
+        // Typewriter effect — start static, animate every 15s
         var word = 'Create Story Chart';
         var textEl = document.getElementById('create-text');
+        var cursorEl = document.getElementById('create-cursor');
         var randInt = function(min, max) { return min + Math.floor(Math.random() * (max - min)); };
 
+        textEl.textContent = word;
+        cursorEl.style.display = 'none';
+
         function typewrite() {
+          cursorEl.style.display = '';
           textEl.textContent = '';
           var delay = 0;
           var typeDelays = [];
@@ -217,14 +221,17 @@
               (function(idx, d) {
                 setTimeout(function() {
                   textEl.textContent = word.substring(0, idx);
-                  if (idx === 0) setTimeout(typewrite, 15000);
+                  if (idx === 0) {
+                    textEl.textContent = word;
+                    cursorEl.style.display = 'none';
+                  }
                 }, d);
               })(i, (word.length - i) * randInt(60, 140));
             }
           }, typeDelays[typeDelays.length - 1] + 2500);
         }
 
-        typewrite();
+        setInterval(typewrite, 15000);
       }
     })();
   </script>

@@ -18,7 +18,7 @@
 
   <script src="/app.js"></script>
   <script>
-  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_SCENES = 100;
+  var MAX_TITLE = 200, MAX_PLOTS = 10, MAX_SCENES = 100;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points;
   var canvas, ctx, W, H, PAD = 20;
@@ -449,7 +449,7 @@
     if (!nameEl || !labelEl) { editingDi = -1; editingPi = -1; return; }
     var plot = plots[editingDi];
     if (!plot) { editingDi = -1; editingPi = -1; return; }
-    var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 1000) || 'Plot';
+    var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 2000) || 'Plot';
     if (name !== plot.title) {
       plot.title = name;
       api('PUT', 'plots/' + plot.id, { title: name });
@@ -457,7 +457,7 @@
     var g = grouped();
     var pt = g[editingDi] && g[editingDi][editingPi];
     if (pt) {
-      var label = labelEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 1000);
+      var label = labelEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 2000);
       if (label !== pt.label) {
         pt.label = label;
         savePoints();
@@ -490,11 +490,11 @@
       editingDi = di; editingPi = pi;
       el.innerHTML =
         '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
-          '<input id="ie-name" type="text" maxlength="1000" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
+          '<input id="ie-name" type="text" maxlength="2000" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
           '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0">del</button>' +
         '</div>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
-          '<input id="ie-label" type="text" maxlength="1000" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
+          '<input id="ie-label" type="text" maxlength="2000" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
           '<button class="btn btn-sm btn-danger" id="ie-del-scene" style="flex-shrink:0" title="Press Delete to remove scene">del</button>' +
         '</div>';
       document.getElementById('ie-del-plot').onclick = function() {

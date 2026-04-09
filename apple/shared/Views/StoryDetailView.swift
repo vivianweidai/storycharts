@@ -226,7 +226,7 @@ struct StoryDetailView: View {
     }
 
     private func saveTitle() {
-        let trimmed = String(editTitleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        let trimmed = String(editTitleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
         let newTitle = trimmed.isEmpty ? "Untitled" : trimmed
         isEditingTitle = false
         detail?.story.title = newTitle
@@ -239,7 +239,7 @@ struct StoryDetailView: View {
         guard let detail = detail else { return }
         guard highlight.plotIndex < detail.plots.count else { return }
         let plot = detail.plots[highlight.plotIndex]
-        let trimmed = String(editPlotName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1000))
+        let trimmed = String(editPlotName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
         guard !trimmed.isEmpty else { return }
         // Update local state
         self.detail?.plots[highlight.plotIndex].title = trimmed
@@ -264,7 +264,7 @@ struct StoryDetailView: View {
             .sorted { $0.x_pos < $1.x_pos }
         guard highlight.pointIndex < pts.count else { return }
         let point = pts[highlight.pointIndex]
-        let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1000))
+        let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
 
         if let idx = chartPoints.firstIndex(where: { $0.id == point.id }) {
             chartPoints[idx].label = trimmed

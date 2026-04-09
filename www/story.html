@@ -439,7 +439,7 @@
     var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
     if (name !== plot.title) {
       plot.title = name;
-      api('PUT', 'plots/' + plot.id, { title: name });
+      api('PUT', 'plots/' + plot.id, { title: name, color: plot.color });
     }
     var g = grouped();
     var pt = g[editingDi] && g[editingDi][editingPi];
@@ -475,15 +475,51 @@
     if (isOwnerGlobal && pt && !isDragging) {
       // Auto-show inline edit
       editingDi = di; editingPi = pi;
+      // Build color swatches — show available colors (unused by other plots) + current
+      var usedColors = {};
+      for (var ci = 0; ci < plots.length; ci++) {
+        if (ci !== di && plots[ci].color >= 0) usedColors[plots[ci].color % COLORS.length] = true;
+      }
+      var curColor = (plot.color >= 0) ? plot.color % COLORS.length : di % COLORS.length;
+      var swatches = '';
+      for (var ci = 0; ci < COLORS.length; ci++) {
+        var avail = !usedColors[ci] || ci === curColor;
+        if (!avail) continue;
+        var sel = (ci === curColor);
+        swatches += '<span class="color-dot" data-ci="' + ci + '" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:' + COLORS[ci] + ';cursor:pointer;border:2px solid ' + (sel ? '#1f2328' : 'transparent') + ';margin:0 2px;vertical-align:middle;opacity:' + (sel ? '1' : '0.5') + '"></span>';
+      }
       el.innerHTML =
         '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
           '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
           '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0">del</button>' +
         '</div>' +
+        '<div style="text-align:center;margin-bottom:6px">' + swatches + '</div>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
           '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
           '<button class="btn btn-sm btn-danger" id="ie-del-scene" style="flex-shrink:0">del</button>' +
         '</div>';
+      // Wire color swatches
+      var allDots = el.querySelectorAll('.color-dot');
+      for (var si = 0; si < allDots.length; si++) {
+        allDots[si].onclick = function() {
+          var newCi = parseInt(this.getAttribute('data-ci'));
+          plot.color = newCi;
+          api('PUT', 'plots/' + plot.id, { title: plot.title, color: newCi });
+          // Update swatch styles
+          for (var j = 0; j < allDots.length; j++) {
+            allDots[j].style.border = '2px solid transparent';
+            allDots[j].style.opacity = '0.5';
+          }
+          this.style.border = '2px solid #1f2328';
+          this.style.opacity = '1';
+          // Update name input color
+          var nc = plotColor(di);
+          var nameInput = document.getElementById('ie-name');
+          nameInput.style.borderColor = nc;
+          nameInput.style.color = nc;
+          draw();
+        };
+      }
       document.getElementById('ie-del-plot').onclick = function() {
         api('DELETE', 'plots/' + plot.id);
         points = points.filter(function(p) { return p.plot_id !== plot.id; });

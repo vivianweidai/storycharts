@@ -45,7 +45,7 @@ class AuthManager: NSObject, ObservableObject {
 
     private func performWebAuth() async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
-            let authURL = URL(string: "https://storycharts.com/api/auth/login-app")!
+            let authURL = URL(string: "https://storycharts.com/api/auth/login?app=1")!
             let scheme = "storycharts"
 
             let session = ASWebAuthenticationSession(

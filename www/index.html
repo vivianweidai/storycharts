@@ -217,7 +217,7 @@
               (function(idx, d) {
                 setTimeout(function() {
                   textEl.textContent = word.substring(0, idx);
-                  if (idx === 0) setTimeout(typewrite, 800);
+                  if (idx === 0) setTimeout(typewrite, 15000);
                 }, d);
               })(i, (word.length - i) * randInt(60, 140));
             }

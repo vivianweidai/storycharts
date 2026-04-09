@@ -42,13 +42,6 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 }
 .user-menu-item:hover { background: #f6f8fa; }
 
-.story-list { list-style: none; }
-.story-card { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
-.story-card:last-child { border-bottom: none; }
-.story-card h3 { font-size: 1em; }
-.story-card h3 a { color: #1f2328; }
-.badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 0.75em; margin-left: 4px; }
-.badge-own { background: #ddf4ff; color: #0969da; }
 
 .btn {
   display: inline-block; padding: 6px 14px; border: 1px solid #d1d9e0;
@@ -62,6 +55,6 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 .btn-danger:hover { background: #cf222e; color: #fff; }
 .btn-sm { padding: 3px 8px; font-size: 0.8em; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-add { padding: 10px 24px; font-size: 0.95em; border-radius: 8px; font-weight: 500; }
+
 
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }

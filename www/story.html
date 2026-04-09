@@ -37,7 +37,8 @@
   var dragPt = null, isDragging = false, didMove = false;
   var hoverDi = -1, hoverPi = -1; // hover state
   var playing = false, playX = -1, playRAF = null, playHighlight = null, playStart = 0; // playback
-  var PLAY_DURATION = 8000; // ms to sweep left to right
+  var PLAY_PAUSE_MS = 3000; // pause at each TP
+  var PLAY_SWEEP_MS = 1500; // sweep between TPs
 
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
@@ -88,19 +89,24 @@
       ctx.setLineDash([]);
     }
 
-    // Halo on selected/dragged point
-    var hp = null;
+    // Halo on selected/dragged/playback-highlighted point
+    var halos = [];
     if (dragPt && selDi >= 0) {
-      hp = dragPt;
+      halos.push({ x: dragPt.x, y: dragPt.y, di: selDi });
     } else if (selDi >= 0 && selPi >= 0 && g[selDi] && g[selDi][selPi]) {
-      hp = g[selDi][selPi];
+      halos.push({ x: g[selDi][selPi].x, y: g[selDi][selPi].y, di: selDi });
     }
-    if (hp) {
-      var color = COLORS[selDi % COLORS.length];
+    if (playHighlight && g[playHighlight.di] && g[playHighlight.di][playHighlight.pi]) {
+      var ph = g[playHighlight.di][playHighlight.pi];
+      halos.push({ x: ph.x, y: ph.y, di: playHighlight.di });
+    }
+    for (var hi = 0; hi < halos.length; hi++) {
+      var h = halos[hi];
+      var color = COLORS[h.di % COLORS.length];
       ctx.fillStyle = color + '15';
-      ctx.beginPath(); ctx.arc(toX(hp.x), toY(hp.y), 22, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(h.x), toY(h.y), 22, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = color + '40'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(toX(hp.x), toY(hp.y), 22, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(toX(h.x), toY(h.y), 22, 0, Math.PI * 2); ctx.stroke();
     }
 
     // Lines
@@ -313,7 +319,38 @@
     return all;
   }
 
+  var playSegments = []; // [{startX, endX, startTime, sweepEnd, pauseEnd}]
+
+  function buildPlaySegments() {
+    var allPts = getAllPointsSorted();
+    if (allPts.length === 0) return [];
+    var segs = [];
+    var t = 0;
+    // Sweep from 0 to first TP
+    var firstX = allPts[0].x;
+    var sweepDur = firstX > 0 ? PLAY_SWEEP_MS * (firstX / 10000) : 0;
+    segs.push({ startX: 0, endX: firstX, pt: allPts[0], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + PLAY_PAUSE_MS });
+    t = segs[0].pauseEnd;
+    // Between TPs
+    for (var i = 1; i < allPts.length; i++) {
+      var dist = allPts[i].x - allPts[i - 1].x;
+      sweepDur = PLAY_SWEEP_MS * (dist / 10000);
+      segs.push({ startX: allPts[i - 1].x, endX: allPts[i].x, pt: allPts[i], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + PLAY_PAUSE_MS });
+      t = segs[i].pauseEnd;
+    }
+    // Final sweep to end
+    var lastX = allPts[allPts.length - 1].x;
+    if (lastX < 10000) {
+      sweepDur = PLAY_SWEEP_MS * ((10000 - lastX) / 10000);
+      segs.push({ startX: lastX, endX: 10000, pt: null, startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur });
+      t = segs[segs.length - 1].pauseEnd;
+    }
+    return segs;
+  }
+
   function startPlayback() {
+    playSegments = buildPlaySegments();
+    if (playSegments.length === 0) return;
     playing = true;
     playStart = performance.now();
     playHighlight = null;
@@ -324,19 +361,27 @@
   function playTick() {
     if (!playing) return;
     var elapsed = performance.now() - playStart;
-    var t = elapsed / PLAY_DURATION;
-    if (t > 1) { stopPlayback(); return; }
+    var totalDur = playSegments[playSegments.length - 1].pauseEnd;
+    if (elapsed >= totalDur) { stopPlayback(); return; }
 
-    playX = Math.round(t * 10000);
+    // Find current segment
+    var seg = null;
+    for (var i = 0; i < playSegments.length; i++) {
+      if (elapsed < playSegments[i].pauseEnd) { seg = playSegments[i]; break; }
+    }
+    if (!seg) { stopPlayback(); return; }
 
-    // Find the latest TP the line has passed
-    var allPts = getAllPointsSorted();
-    playHighlight = null;
-    for (var i = allPts.length - 1; i >= 0; i--) {
-      if (allPts[i].x <= playX) {
-        playHighlight = { di: allPts[i].di, pi: allPts[i].pi };
-        break;
-      }
+    if (elapsed < seg.sweepEnd) {
+      // Sweeping
+      var segElapsed = elapsed - seg.startTime;
+      var segDur = seg.sweepEnd - seg.startTime;
+      var t = segDur > 0 ? segElapsed / segDur : 1;
+      playX = Math.round(seg.startX + (seg.endX - seg.startX) * t);
+      playHighlight = null;
+    } else {
+      // Paused at TP
+      playX = seg.endX;
+      playHighlight = seg.pt ? { di: seg.pt.di, pi: seg.pt.pi } : null;
     }
 
     draw();

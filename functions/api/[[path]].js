@@ -148,8 +148,10 @@ async function createStory(env, user, body) {
 
   const cpStmt = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val, label) VALUES (?, ?, ?, ?, ?)');
   const batch = [];
+  let totalPts = 0;
   for (let pi = 0; pi < plotIds.length; pi++) {
-    const n = 3 + Math.floor(Math.random() * 6);
+    const n = Math.min(3 + Math.floor(Math.random() * 6), 50 - totalPts);
+    totalPts += n;
     const labels = tpLabels[names[pi]] || tpLabels.Internal;
     const shuffled = labels.slice().sort(() => Math.random() - 0.5);
     const pts = [];
@@ -188,6 +190,8 @@ async function deleteStory(env, user, id) {
 
 async function createPlot(env, user, storyId, body) {
   await requireOwner(env, user, storyId);
+  const existing = await env.DB.prepare('SELECT COUNT(*) as cnt FROM plots WHERE story_id = ?').bind(storyId).first();
+  if (existing.cnt >= 10) return json({ error: 'Maximum 10 plots per story' }, 400);
   const color = typeof body.color === 'number' ? body.color : -1;
   const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order, color) VALUES (?, ?, 100, ?)').bind(storyId, body.title || '', color).run();
   return json({ id: r.meta.last_row_id }, 201);
@@ -220,7 +224,8 @@ async function saveChartPoints(env, user, storyId, body) {
   const del = env.DB.prepare('DELETE FROM chart_points WHERE story_id = ?').bind(storyId);
   const ins = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val, label) VALUES (?, ?, ?, ?, ?)');
   const batch = [del];
-  for (const cp of (body.points || [])) {
+  const pts = (body.points || []).slice(0, 50);
+  for (const cp of pts) {
     batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), cp.label || ''));
   }
   await env.DB.batch(batch);

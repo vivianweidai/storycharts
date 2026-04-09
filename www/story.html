@@ -10,16 +10,6 @@
     @media (min-width: 600px) {
       .chart-wrap { aspect-ratio: 1.618 / 1 !important; }
     }
-    @keyframes wave {
-      0%, 100% { transform: translateY(0); }
-      20% { transform: translateY(-3px); }
-      40% { transform: translateY(0); }
-    }
-    .wave-text span {
-      display: inline-block;
-      animation: wave 0.8s ease-in-out;
-      animation-fill-mode: both;
-    }
   </style>
 </head>
 <body>
@@ -29,7 +19,7 @@
   <script src="/app.js"></script>
   <script>
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0','#2a9d8f','#e07098','#8a6540','#5050b0','#e08050'];
-  var MAX_TITLE = 60;
+  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_POINTS = 50;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points;
   var canvas, ctx, W, H, PAD = 20;
@@ -415,9 +405,7 @@
     var pi = selDi >= 0 ? selPi : (!isOwnerGlobal ? hoverPi : -1);
 
     if (di < 0) {
-      el.innerHTML = isOwnerGlobal ?
-        '<button class="btn btn-sm btn-primary" id="add-plot-btn">+ add plot</button>' : '';
-      wireAddPlot();
+      el.innerHTML = '';
       return;
     }
 
@@ -434,11 +422,6 @@
         (pt ? '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' : '') +
       '</div>';
     if (isOwnerGlobal && pt) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
-  }
-
-  function wireAddPlot() {
-    var b = document.getElementById('add-plot-btn');
-    if (b) b.onclick = addPlot;
   }
 
   function editTP(di, pi) {
@@ -501,7 +484,7 @@
       points = points.filter(function(p) { return p.plot_id !== plot.id; });
       plots.splice(di, 1);
       selDi = -1; selPi = -1; infoEditing = false;
-      draw(); updateInfo();
+      draw(); updateInfo(); updateAddPlotBtn();
     };
     document.getElementById('ie-del-tp').onclick = function() {
       if (!confirm('Delete this turning point?')) return;
@@ -510,14 +493,22 @@
       selDi = -1; selPi = -1; infoEditing = false;
       draw(); updateInfo(); savePoints();
     };
-    document.getElementById('ie-add-tp').onclick = function() {
+    var addTpBtn = document.getElementById('ie-add-tp');
+    if (points.length >= MAX_POINTS) addTpBtn.disabled = true;
+    addTpBtn.onclick = function() {
       addTP(di);
       infoEditing = false;
     };
   }
 
+  function updateAddPlotBtn() {
+    var btn = document.getElementById('add-plot-btn');
+    if (btn) btn.disabled = plots.length >= MAX_PLOTS;
+  }
+
   function addPlot() {
-    var names = ['Plot A','Plot B','Plot C','Plot D','Plot E'];
+    if (plots.length >= MAX_PLOTS) return;
+    var names = ['Plot A','Plot B','Plot C','Plot D','Plot E','Plot F','Plot G','Plot H','Plot I','Plot J'];
     var name = names[plots.length % names.length];
     var ci = plots.length % COLORS.length;
     api('POST', 'stories/' + storyId + '/plots', { title: name, color: ci }).then(function(r) {
@@ -525,11 +516,12 @@
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }
-      savePoints(); draw(); updateInfo();
+      savePoints(); draw(); updateInfo(); updateAddPlotBtn();
     });
   }
 
   function addTP(di) {
+    if (points.length >= MAX_POINTS) return;
     var plot = plots[di];
     points.push({ plot_id: plot.id, x: 5000, y: 5000, label: 'New point' });
     savePoints(); draw(); updateInfo();
@@ -572,8 +564,8 @@
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
         '<span style="margin-left:auto;font-size:0.8em;display:flex;align-items:center;gap:8px">' +
-          (isOwner ? '<span id="drag-hint" style="color:#0969da;opacity:0.7">drag points to edit</span>' : '') +
-          '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>' +
+          (isOwner ? '<button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em">+ add plot</button>' :
+                     '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>') +
         '</span>' +
       '</div>' +
       '<div id="title-edit" style="display:none;margin-bottom:0.5em">' +
@@ -588,8 +580,12 @@
       '</div>' +
       '<div id="info" style="text-align:center;margin-top:24px;min-height:3em"></div>';
 
-    // Play button
-    document.getElementById('play-btn').onclick = togglePlayback;
+    // Top-right button
+    if (isOwner) {
+      document.getElementById('add-plot-btn').onclick = addPlot;
+    } else {
+      document.getElementById('play-btn').onclick = togglePlayback;
+    }
 
     // Inline title edit
     if (isOwner) {
@@ -634,7 +630,7 @@
 
     canvas = document.getElementById('c');
     ctx = canvas.getContext('2d');
-    draw(); updateInfo();
+    draw(); updateInfo(); updateAddPlotBtn();
     window.addEventListener('resize', draw);
 
     canvas.addEventListener('mousedown', onStart);
@@ -648,22 +644,6 @@
       if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); if (!isOwnerGlobal) updateInfo(); }
     });
 
-    // Wave effect on hint after 3s
-    if (isOwner) {
-      setTimeout(function() {
-        var hint = document.getElementById('drag-hint');
-        if (!hint) return;
-        var text = hint.textContent;
-        hint.innerHTML = '';
-        hint.classList.add('wave-text');
-        for (var i = 0; i < text.length; i++) {
-          var span = document.createElement('span');
-          span.textContent = text[i] === ' ' ? '\u00a0' : text[i];
-          span.style.animationDelay = (i * 0.04) + 's';
-          hint.appendChild(span);
-        }
-      }, 3000);
-    }
   })();
   </script>
 </body>

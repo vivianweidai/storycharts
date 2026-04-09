@@ -122,17 +122,11 @@ async function createStory(env, user, body) {
   const sid = r.meta.last_row_id;
 
   const names = ['Internal', 'Relationship', 'External', 'Mystery'];
-  const descs = [
-    'Inner journey — fears, doubts, growth, self-discovery.',
-    'Key relationships — trust, conflict, bonding, betrayal.',
-    'Outer conflict — obstacles, antagonists, the main goal.',
-    'Hidden elements — secrets, twists, revelations.'
-  ];
   const numPlots = 2 + Math.floor(Math.random() * 3);
-  const pStmt = env.DB.prepare('INSERT INTO plots (story_id, title, description, sort_order) VALUES (?, ?, ?, ?)');
+  const pStmt = env.DB.prepare('INSERT INTO plots (story_id, title, sort_order) VALUES (?, ?, ?)');
   const plotIds = [];
   for (let i = 0; i < numPlots; i++) {
-    const pr = await pStmt.bind(sid, names[i], descs[i], i + 1).run();
+    const pr = await pStmt.bind(sid, names[i], i + 1).run();
     plotIds.push(pr.meta.last_row_id);
   }
 
@@ -185,7 +179,7 @@ async function deleteStory(env, user, id) {
 
 async function createPlot(env, user, storyId, body) {
   await requireOwner(env, user, storyId);
-  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, description, sort_order) VALUES (?, ?, ?, 100)').bind(storyId, body.title || '', body.description || '').run();
+  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order) VALUES (?, ?, 100)').bind(storyId, body.title || '').run();
   return json({ id: r.meta.last_row_id }, 201);
 }
 
@@ -193,7 +187,7 @@ async function updatePlot(env, user, id, body) {
   const p = await env.DB.prepare('SELECT story_id FROM plots WHERE id = ?').bind(id).first();
   if (!p) return json({ error: 'Not found' }, 404);
   await requireOwner(env, user, p.story_id);
-  await env.DB.prepare('UPDATE plots SET title = ?, description = ? WHERE id = ?').bind(body.title || '', body.description || '', id).run();
+  await env.DB.prepare('UPDATE plots SET title = ? WHERE id = ?').bind(body.title || '', id).run();
   return json({ ok: true });
 }
 

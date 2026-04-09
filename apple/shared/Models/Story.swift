@@ -12,7 +12,6 @@ struct Plot: Codable, Identifiable {
     let id: Int
     let story_id: Int
     var title: String
-    var description: String
     let sort_order: Int
 }
 

@@ -68,12 +68,6 @@ struct StoryDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(plot.title)
                         .font(.headline)
-                    if !plot.description.isEmpty {
-                        Text(plot.description)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                    }
-
                     let points = chartPoints
                         .filter { $0.plot_id == plot.id }
                         .sorted { $0.x_pos < $1.x_pos }

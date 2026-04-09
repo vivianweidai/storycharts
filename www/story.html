@@ -282,7 +282,7 @@
         canvas.style.cursor = isOwnerGlobal ? 'grab' : 'default';
       }
     }
-    if (hoverDi !== oldDi || hoverPi !== oldPi) draw();
+    if (hoverDi !== oldDi || hoverPi !== oldPi) { draw(); if (!isOwnerGlobal) updateInfo(); }
   }
 
   function onEnd() {
@@ -298,6 +298,7 @@
 
   function onClick(e) {
     if (didMove) { didMove = false; return; }
+    if (!isOwnerGlobal) return; // read-only: hover handles everything
     infoEditing = false;
     var pos = getPos(e);
     var hit = hitPoint(pos.x, pos.y);
@@ -428,26 +429,29 @@
     var el = document.getElementById('info');
     if (infoEditing) return;
 
-    if (selDi < 0) {
+    // Use hover state for read-only, selection state for owner
+    var di = selDi >= 0 ? selDi : (!isOwnerGlobal ? hoverDi : -1);
+    var pi = selDi >= 0 ? selPi : (!isOwnerGlobal ? hoverPi : -1);
+
+    if (di < 0) {
       el.innerHTML = isOwnerGlobal ?
         '<button class="btn btn-sm btn-primary" id="add-plot-btn">+ add plot</button>' : '';
       wireAddPlot();
       return;
     }
 
-    var color = COLORS[selDi % COLORS.length];
-    var plot = plots[selDi];
+    var color = COLORS[di % COLORS.length];
+    var plot = plots[di];
 
-    if (selPi >= 0) {
+    if (pi >= 0) {
       var g = grouped();
-      var pt = g[selDi][selPi];
+      var pt = g[di][pi];
       el.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
           '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
           '<span style="font-size:0.9em">' + esc(pt.label || 'Turning point') + '</span>' +
           (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' : '') +
-        '</div>' +
-        '';
+        '</div>';
       if (isOwnerGlobal) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
     } else {
       el.innerHTML =
@@ -455,8 +459,7 @@
           '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
           (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' +
                            '<button class="btn btn-sm btn-primary" id="add-tp-btn">+ tp</button>' : '') +
-        '</div>' +
-        '<div style="font-size:0.85em;color:#666">' + esc(plot.description || '') + '</div>';
+        '</div>';
       if (isOwnerGlobal) {
         document.getElementById('info-edit-btn').onclick = function() { editPlot(selDi); };
         document.getElementById('add-tp-btn').onclick = function() { addTP(selDi); };
@@ -475,18 +478,16 @@
     var plot = plots[di];
     var color = COLORS[di % COLORS.length];
     el.innerHTML =
-      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
+      '<div style="display:flex;gap:6px;align-items:center">' +
         '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
         '<button class="btn btn-sm btn-primary" id="ie-ok" style="flex-shrink:0">ok</button>' +
         '<button class="btn btn-sm btn-danger" id="ie-del" style="flex-shrink:0">del</button>' +
-      '</div>' +
-      '<input id="ie-desc" type="text" maxlength="120" value="' + esc(plot.description || '') + '" placeholder="Description" style="width:100%;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit;color:#666">';
+      '</div>';
     document.getElementById('ie-name').focus();
     document.getElementById('ie-ok').onclick = function() {
       var name = document.getElementById('ie-name').value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
-      var desc = document.getElementById('ie-desc').value.trim().replace(/<[^>]*>/g, '').slice(0, 120);
-      plot.title = name; plot.description = desc;
-      api('PUT', 'plots/' + plot.id, { title: name, description: desc });
+      plot.title = name;
+      api('PUT', 'plots/' + plot.id, { title: name });
       infoEditing = false; draw(); updateInfo();
     };
     document.getElementById('ie-del').onclick = function() {
@@ -530,8 +531,8 @@
   function addPlot() {
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E'];
     var name = names[plots.length % names.length];
-    api('POST', 'stories/' + storyId + '/plots', { title: name, description: '' }).then(function(r) {
-      plots.push({ id: r.id, title: name, description: '' });
+    api('POST', 'stories/' + storyId + '/plots', { title: name }).then(function(r) {
+      plots.push({ id: r.id, title: name });
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }
@@ -655,7 +656,7 @@
     window.addEventListener('touchend', onEnd);
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('mouseleave', function() {
-      if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); }
+      if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); if (!isOwnerGlobal) updateInfo(); }
     });
 
     // Wave effect on hint after 3s

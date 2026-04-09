@@ -87,12 +87,17 @@ let migrated = false;
 async function migrate(db) {
   if (migrated) return;
   await db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', userid TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))"),
-    db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS stories (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '', userid TEXT NOT NULL)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS plots (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, title TEXT NOT NULL DEFAULT '', sort_order INTEGER NOT NULL DEFAULT 100, color INTEGER NOT NULL DEFAULT -1)"),
     db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '')")
   ]);
+  // Legacy column migrations (safe to re-run)
   try { await db.prepare("ALTER TABLE chart_points ADD COLUMN label TEXT NOT NULL DEFAULT ''").run(); } catch {}
   try { await db.prepare("ALTER TABLE plots ADD COLUMN color INTEGER NOT NULL DEFAULT -1").run(); } catch {}
+  // Drop unused columns
+  try { await db.prepare("ALTER TABLE stories DROP COLUMN email").run(); } catch {}
+  try { await db.prepare("ALTER TABLE stories DROP COLUMN created_at").run(); } catch {}
+  try { await db.prepare("ALTER TABLE plots DROP COLUMN description").run(); } catch {}
   migrated = true;
 }
 
@@ -105,7 +110,7 @@ async function requireOwner(env, user, storyId) {
 // --- Stories ---
 
 async function listStories(env) {
-  const stories = (await env.DB.prepare('SELECT id, title, userid, created_at FROM stories ORDER BY id DESC').all()).results;
+  const stories = (await env.DB.prepare('SELECT id, title, userid FROM stories ORDER BY id DESC').all()).results;
   const allPlots = (await env.DB.prepare('SELECT id, story_id, title, color FROM plots ORDER BY sort_order').all()).results;
   const allPoints = (await env.DB.prepare('SELECT plot_id, x_pos, y_val FROM chart_points ORDER BY x_pos').all()).results;
   const plotsByStory = {};
@@ -131,7 +136,7 @@ async function createStory(env, user, body) {
   const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM stories WHERE userid = ?').bind(user.userid).first();
   if (count.cnt >= 20) return json({ error: 'Maximum 20 stories per user. Delete a story to make room.' }, 400);
   const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 60).trim() || 'Untitled';
-  const r = await env.DB.prepare('INSERT INTO stories (title, userid, email) VALUES (?, ?, ?)').bind(title, user.userid, user.email).run();
+  const r = await env.DB.prepare('INSERT INTO stories (title, userid) VALUES (?, ?)').bind(title, user.userid).run();
   const sid = r.meta.last_row_id;
 
   const names = ['Internal', 'Relationship', 'External', 'Mystery'];

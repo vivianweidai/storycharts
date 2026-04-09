@@ -435,15 +435,24 @@ struct StoryDetailView: View {
     }
 
     private func addPlot() async {
-        guard let detail = detail else { print("addPlot: no detail"); return }
+        guard detail != nil else { return }
+        let plotCount = detail!.plots.count
         let names = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
-        let name = names[detail.plots.count % names.count]
-        let color = detail.plots.count % ChartView.plotColors.count
+        let name = names[plotCount % names.count]
+        let color = plotCount % ChartView.plotColors.count
         do {
-            _ = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
-            await reloadStory()
+            let resp = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
+            print("addPlot succeeded, id=\(resp.id)")
         } catch {
             print("addPlot error: \(error)")
+        }
+        do {
+            let d = try await APIClient.shared.getStory(storyId)
+            print("reloadStory: \(d.plots.count) plots, \(d.chartPoints.count) points")
+            detail = d
+            chartPoints = d.chartPoints
+        } catch {
+            print("reloadStory error: \(error)")
         }
     }
 

@@ -45,8 +45,8 @@ storycharts/
 
 ## Data Model
 
-- **Stories** — title, owner
-- **Plots** — belong to a story, have title + color (2-4 per story)
+- **Stories** — title, userid (owner)
+- **Plots** — belong to a story, have title, color, sort_order
 - **Scenes** (chart_points in DB) — belong to a plot, stored as (x_pos, y_val) integers 0-10000
   - Displayed as percentages (0-100%) on a square chart
   - 5000 = 50% = midpoint (neutral baseline)

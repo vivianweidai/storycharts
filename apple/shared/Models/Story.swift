@@ -4,9 +4,6 @@ struct Story: Codable, Identifiable {
     let id: Int
     var title: String
     let userid: String
-    let created_at: String?
-
-    var email: String { userid }
 }
 
 struct Plot: Codable, Identifiable {
@@ -42,10 +39,7 @@ struct StoryListItem: Codable, Identifiable {
     let id: Int
     let title: String
     let userid: String
-    let created_at: String?
     let plots: [StoryListPlot]
-
-    var email: String { userid }
 }
 
 struct StoryListPlot: Codable, Identifiable {

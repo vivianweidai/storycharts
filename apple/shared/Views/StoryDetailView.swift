@@ -239,7 +239,7 @@ struct StoryDetailView: View {
         guard let detail = detail else { return }
         guard highlight.plotIndex < detail.plots.count else { return }
         let plot = detail.plots[highlight.plotIndex]
-        let trimmed = String(editPlotName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        let trimmed = String(editPlotName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1000))
         guard !trimmed.isEmpty else { return }
         // Update local state
         self.detail?.plots[highlight.plotIndex].title = trimmed
@@ -264,7 +264,7 @@ struct StoryDetailView: View {
             .sorted { $0.x_pos < $1.x_pos }
         guard highlight.pointIndex < pts.count else { return }
         let point = pts[highlight.pointIndex]
-        let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1000))
 
         if let idx = chartPoints.firstIndex(where: { $0.id == point.id }) {
             chartPoints[idx].label = trimmed
@@ -434,30 +434,41 @@ struct StoryDetailView: View {
         playX = nil
     }
 
+    private func nextFreeColor(existingPlots: [Plot]) -> Int {
+        var used = Set<Int>()
+        for (i, plot) in existingPlots.enumerated() {
+            let c = (plot.color != nil && plot.color! >= 0) ? plot.color! % ChartView.plotColors.count : i % ChartView.plotColors.count
+            used.insert(c)
+        }
+        for c in 0..<ChartView.plotColors.count {
+            if !used.contains(c) { return c }
+        }
+        return existingPlots.count % ChartView.plotColors.count
+    }
+
     private func addPlot() async {
         guard detail != nil else { return }
-        let plotCount = detail!.plots.count
+        let plots = detail!.plots
+        guard plots.count < 10 else { return }
         let names = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
-        let name = names[plotCount % names.count]
-        let color = plotCount % ChartView.plotColors.count
+        let name = names[plots.count % names.count]
+        let color = nextFreeColor(existingPlots: plots)
         do {
             let resp = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
-            print("addPlot succeeded, id=\(resp.id)")
-        } catch {
-            print("addPlot error: \(error)")
-        }
-        do {
-            let d = try await APIClient.shared.getStory(storyId)
-            print("reloadStory: \(d.plots.count) plots, \(d.chartPoints.count) points")
-            detail = d
-            chartPoints = d.chartPoints
-        } catch {
-            print("reloadStory error: \(error)")
-        }
+            // Add 3 random initial scenes, matching webapp behavior
+            var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
+            let sceneLabels = ["New scene", "Rising action", "Turning point"]
+            for i in 0..<3 {
+                pts.append(ChartPointPayload(plot_id: resp.id, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: sceneLabels[i]))
+            }
+            try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
+            await reloadStory()
+        } catch {}
     }
 
     private func addScene() async {
-        guard let detail = detail else { print("addScene: no detail"); return }
+        guard let detail = detail else { return }
+        guard chartPoints.count < 100 else { return }
         // If no plots exist, create one first
         var targetPlotId: Int
         if let hl = highlightedPoint, hl.plotIndex < detail.plots.count {
@@ -469,18 +480,15 @@ struct StoryDetailView: View {
                 let resp = try await APIClient.shared.createPlot(storyId: storyId, title: "Plot A", color: 0)
                 targetPlotId = resp.id
             } catch {
-                print("addScene createPlot error: \(error)")
                 return
             }
         }
         var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
-        pts.append(ChartPointPayload(plot_id: targetPlotId, x_pos: 5000, y_val: 5000, label: ""))
+        pts.append(ChartPointPayload(plot_id: targetPlotId, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: "New scene"))
         do {
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()
-        } catch {
-            print("addScene savePoints error: \(error)")
-        }
+        } catch {}
     }
 
     private func deleteStory() async {

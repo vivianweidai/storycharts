@@ -30,7 +30,7 @@ function showModal(title, fields, onSave, onDelete) {
     document.body.removeChild(ov); onSave(d);
   };
   ov.querySelector('#m-no').onclick = function() { document.body.removeChild(ov); };
-  if (onDelete) ov.querySelector('#m-del').onclick = function() { if(confirm('Sure?')) { document.body.removeChild(ov); onDelete(); } };
+  if (onDelete) ov.querySelector('#m-del').onclick = function() { document.body.removeChild(ov); onDelete(); };
   var first = ov.querySelector('input, textarea'); if (first) first.focus();
 }
 

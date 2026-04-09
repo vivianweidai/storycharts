@@ -460,14 +460,13 @@
       el.innerHTML =
         '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
           '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
-          '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0" title="Delete plot">del plot</button>' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0">del</button>' +
         '</div>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
           '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
-          '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0" title="Delete turning point">del tp</button>' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0">del</button>' +
         '</div>';
       document.getElementById('ie-del-plot').onclick = function() {
-        if (!confirm('Delete plot "' + plot.title + '" and all its turning points?')) return;
         api('DELETE', 'plots/' + plot.id);
         points = points.filter(function(p) { return p.plot_id !== plot.id; });
         plots.splice(di, 1);
@@ -475,7 +474,6 @@
         draw(); updateInfo(); updateAddPlotBtn();
       };
       document.getElementById('ie-del-tp').onclick = function() {
-        if (!confirm('Delete this turning point?')) return;
         var idx = points.indexOf(pt);
         if (idx >= 0) points.splice(idx, 1);
         selDi = -1; selPi = -1; editingDi = -1; editingPi = -1;
@@ -642,9 +640,7 @@
       });
 
       document.getElementById('del-btn').onclick = function() {
-        if (confirm('Delete this story and all its data?')) {
-          api('DELETE', 'stories/' + storyId).then(function() { location.href = '/'; });
-        }
+        api('DELETE', 'stories/' + storyId).then(function() { location.href = '/'; });
       };
     }
 

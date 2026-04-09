@@ -28,7 +28,7 @@
 
   <script src="/app.js"></script>
   <script>
-  var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
+  var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0','#2a9d8f','#e07098','#8a6540','#5050b0','#e08050'];
   var MAX_TITLE = 60;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points;
@@ -40,6 +40,7 @@
   var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
   var PLAY_SWEEP_MS = 1500; // sweep between TPs
 
+  function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
   function fromX(px) { return Math.max(0, Math.min(10000, Math.round(((px - PAD) / (W - 2 * PAD)) * 10000))); }
@@ -100,7 +101,7 @@
     }
     for (var hi = 0; hi < halos.length; hi++) {
       var h = halos[hi];
-      var color = COLORS[h.di % COLORS.length];
+      var color = plotColor(h.di);
       ctx.fillStyle = color + '15';
       ctx.beginPath(); ctx.arc(toX(h.x), toY(h.y), 22, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = color + '40'; ctx.lineWidth = 1.5;
@@ -111,7 +112,7 @@
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     for (var d = 0; d < g.length; d++) {
       var pts = g[d]; if (pts.length < 2) continue;
-      ctx.strokeStyle = COLORS[d % COLORS.length];
+      ctx.strokeStyle = plotColor(d);
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(toX(pts[0].x), toY(pts[0].y));
@@ -126,7 +127,7 @@
         var isHover = (d === hoverDi && i === hoverPi);
         var isPlayHL = (playHighlight && playHighlight.di === d && playHighlight.pi === i);
         var r = (isHover || isPlayHL) ? 7 : 5;
-        ctx.fillStyle = COLORS[d % COLORS.length];
+        ctx.fillStyle = plotColor(d);
         ctx.beginPath();
         ctx.arc(toX(g[d][i].x), toY(g[d][i].y), r, 0, Math.PI * 2);
         ctx.fill();
@@ -161,7 +162,7 @@
     if (ty < 2) { ty = py + 14; }
 
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.strokeStyle = COLORS[di % COLORS.length] + '60';
+    ctx.strokeStyle = plotColor(di) + '60';
     ctx.lineWidth = 1;
     roundRect(ctx, tx, ty, tw + pad * 2, h, 4);
     ctx.fill(); ctx.stroke();
@@ -368,7 +369,7 @@
       var g = grouped();
       var pt = g[playHighlight.di] && g[playHighlight.di][playHighlight.pi];
       if (pt) {
-        var color = COLORS[playHighlight.di % COLORS.length];
+        var color = plotColor(playHighlight.di);
         var plot = plots[playHighlight.di];
         el.innerHTML =
           '<div style="text-align:center">' +
@@ -420,7 +421,7 @@
       return;
     }
 
-    var color = COLORS[di % COLORS.length];
+    var color = plotColor(di);
     var plot = plots[di];
 
     var g = grouped();
@@ -446,12 +447,19 @@
     var g = grouped();
     var pt = g[di][pi];
     var plot = plots[di];
-    var color = COLORS[di % COLORS.length];
+    var color = plotColor(di);
+    var selColorIdx = (plot.color >= 0) ? plot.color : di;
+    var swatches = '';
+    for (var ci = 0; ci < COLORS.length; ci++) {
+      var sel = (ci === selColorIdx);
+      swatches += '<span class="color-swatch" data-ci="' + ci + '" style="display:inline-block;width:22px;height:22px;border-radius:50%;background:' + COLORS[ci] + ';cursor:pointer;border:2.5px solid ' + (sel ? '#1f2328' : 'transparent') + ';margin:0 2px;vertical-align:middle"></span>';
+    }
     el.innerHTML =
       '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
         '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
         '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0" title="Delete plot">del plot</button>' +
       '</div>' +
+      '<div style="text-align:center;margin-bottom:6px">' + swatches + '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
         '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="TP label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
         '<button class="btn btn-sm btn-danger" id="ie-del-tp" style="flex-shrink:0" title="Delete turning point">del tp</button>' +
@@ -460,14 +468,31 @@
         '<button class="btn btn-sm btn-primary" id="ie-ok">ok</button>' +
         ' <button class="btn btn-sm" id="ie-add-tp">+ tp</button>' +
       '</div>';
+    // Wire color swatches
+    var allSwatches = el.querySelectorAll('.color-swatch');
+    for (var si = 0; si < allSwatches.length; si++) {
+      allSwatches[si].onclick = function() {
+        selColorIdx = parseInt(this.getAttribute('data-ci'));
+        for (var j = 0; j < allSwatches.length; j++) {
+          allSwatches[j].style.border = '2.5px solid transparent';
+        }
+        this.style.border = '2.5px solid #1f2328';
+        // Live preview: update plot color and redraw chart
+        plot.color = selColorIdx;
+        var newColor = plotColor(di);
+        var nameInput = document.getElementById('ie-name');
+        nameInput.style.borderColor = newColor;
+        nameInput.style.color = newColor;
+        draw();
+      };
+    }
     document.getElementById('ie-label').focus();
     document.getElementById('ie-ok').onclick = function() {
       var name = document.getElementById('ie-name').value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
       pt.label = document.getElementById('ie-label').value.trim().replace(/<[^>]*>/g, '').slice(0, 60);
-      if (name !== plot.title) {
-        plot.title = name;
-        api('PUT', 'plots/' + plot.id, { title: name });
-      }
+      plot.color = selColorIdx;
+      plot.title = name;
+      api('PUT', 'plots/' + plot.id, { title: name, color: selColorIdx });
       infoEditing = false; draw(); updateInfo(); savePoints();
     };
     document.getElementById('ie-del-plot').onclick = function() {
@@ -494,8 +519,9 @@
   function addPlot() {
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E'];
     var name = names[plots.length % names.length];
-    api('POST', 'stories/' + storyId + '/plots', { title: name }).then(function(r) {
-      plots.push({ id: r.id, title: name });
+    var ci = plots.length % COLORS.length;
+    api('POST', 'stories/' + storyId + '/plots', { title: name, color: ci }).then(function(r) {
+      plots.push({ id: r.id, title: name, color: ci });
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }
@@ -557,10 +583,10 @@
           '<button class="btn btn-sm btn-danger" id="del-btn" style="flex-shrink:0">del</button>' +
         '</div>' +
       '</div>' +
-      '<div class="chart-wrap" style="margin-top:12px;width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
+      '<div class="chart-wrap" style="margin-top:20px;width:100%;aspect-ratio:1;border:1.5px solid ' + borderColor + ';border-radius:6px;overflow:hidden;background:' + bgColor + '">' +
         '<canvas id="c" style="width:100%;height:100%;display:block;touch-action:none;cursor:' + (isOwner ? 'grab' : 'default') + '"></canvas>' +
       '</div>' +
-      '<div id="info" style="text-align:center;margin-top:18px;min-height:3em"></div>';
+      '<div id="info" style="text-align:center;margin-top:24px;min-height:3em"></div>';
 
     // Play button
     document.getElementById('play-btn').onclick = togglePlayback;

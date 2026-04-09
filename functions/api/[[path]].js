@@ -82,6 +82,7 @@ async function migrate(db) {
     db.prepare("CREATE TABLE IF NOT EXISTS chart_points (id INTEGER PRIMARY KEY AUTOINCREMENT, story_id INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE, plot_id INTEGER NOT NULL REFERENCES plots(id) ON DELETE CASCADE, x_pos INTEGER NOT NULL DEFAULT 0, y_val INTEGER NOT NULL DEFAULT 0, label TEXT NOT NULL DEFAULT '')")
   ]);
   try { await db.prepare("ALTER TABLE chart_points ADD COLUMN label TEXT NOT NULL DEFAULT ''").run(); } catch {}
+  try { await db.prepare("ALTER TABLE plots ADD COLUMN color INTEGER NOT NULL DEFAULT -1").run(); } catch {}
   migrated = true;
 }
 
@@ -95,7 +96,7 @@ async function requireOwner(env, user, storyId) {
 
 async function listStories(env) {
   const stories = (await env.DB.prepare('SELECT id, title, userid, created_at FROM stories ORDER BY id DESC').all()).results;
-  const allPlots = (await env.DB.prepare('SELECT id, story_id, title FROM plots ORDER BY sort_order').all()).results;
+  const allPlots = (await env.DB.prepare('SELECT id, story_id, title, color FROM plots ORDER BY sort_order').all()).results;
   const allPoints = (await env.DB.prepare('SELECT plot_id, x_pos, y_val FROM chart_points ORDER BY x_pos').all()).results;
   const plotsByStory = {};
   for (const p of allPlots) {
@@ -109,7 +110,7 @@ async function listStories(env) {
   }
   for (const s of stories) {
     s.plots = (plotsByStory[s.id] || []).map(p => ({
-      id: p.id, title: p.title,
+      id: p.id, title: p.title, color: p.color,
       points: pointsByPlot[p.id] || []
     }));
   }
@@ -123,10 +124,10 @@ async function createStory(env, user, body) {
 
   const names = ['Internal', 'Relationship', 'External', 'Mystery'];
   const numPlots = 2 + Math.floor(Math.random() * 3);
-  const pStmt = env.DB.prepare('INSERT INTO plots (story_id, title, sort_order) VALUES (?, ?, ?)');
+  const pStmt = env.DB.prepare('INSERT INTO plots (story_id, title, sort_order, color) VALUES (?, ?, ?, ?)');
   const plotIds = [];
   for (let i = 0; i < numPlots; i++) {
-    const pr = await pStmt.bind(sid, names[i], i + 1).run();
+    const pr = await pStmt.bind(sid, names[i], i + 1, i).run();
     plotIds.push(pr.meta.last_row_id);
   }
 
@@ -179,7 +180,8 @@ async function deleteStory(env, user, id) {
 
 async function createPlot(env, user, storyId, body) {
   await requireOwner(env, user, storyId);
-  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order) VALUES (?, ?, 100)').bind(storyId, body.title || '').run();
+  const color = typeof body.color === 'number' ? body.color : -1;
+  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order, color) VALUES (?, ?, 100, ?)').bind(storyId, body.title || '', color).run();
   return json({ id: r.meta.last_row_id }, 201);
 }
 
@@ -187,7 +189,8 @@ async function updatePlot(env, user, id, body) {
   const p = await env.DB.prepare('SELECT story_id FROM plots WHERE id = ?').bind(id).first();
   if (!p) return json({ error: 'Not found' }, 404);
   await requireOwner(env, user, p.story_id);
-  await env.DB.prepare('UPDATE plots SET title = ? WHERE id = ?').bind(body.title || '', id).run();
+  const color = typeof body.color === 'number' ? body.color : -1;
+  await env.DB.prepare('UPDATE plots SET title = ?, color = ? WHERE id = ?').bind(body.title || '', color, id).run();
   return json({ ok: true });
 }
 

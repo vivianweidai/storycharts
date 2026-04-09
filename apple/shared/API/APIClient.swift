@@ -35,15 +35,17 @@ class APIClient {
 
     // MARK: - Plots
 
-    func createPlot(storyId: Int, title: String) async throws -> CreateResponse {
+    func createPlot(storyId: Int, title: String, color: Int = -1) async throws -> CreateResponse {
         return try await post("stories/\(storyId)/plots", body: [
-            "title": title
+            "title": title,
+            "color": color
         ])
     }
 
-    func updatePlot(_ id: Int, title: String) async throws {
+    func updatePlot(_ id: Int, title: String, color: Int = -1) async throws {
         let _: OKResponse = try await put("plots/\(id)", body: [
-            "title": title
+            "title": title,
+            "color": color
         ])
     }
 

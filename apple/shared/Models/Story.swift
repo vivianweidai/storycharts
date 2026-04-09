@@ -13,6 +13,7 @@ struct Plot: Codable, Identifiable {
     let story_id: Int
     var title: String
     let sort_order: Int
+    var color: Int?
 }
 
 struct ChartPoint: Codable, Identifiable {

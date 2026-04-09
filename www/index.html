@@ -86,7 +86,7 @@
 
   <script src="/app.js"></script>
   <script>
-    var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0'];
+    var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0','#2a9d8f','#e07098','#8a6540','#5050b0','#e08050'];
 
     function drawMiniChart(canvas, plots) {
       var dpr = window.devicePixelRatio || 1;
@@ -115,7 +115,7 @@
         var pts = plots[d].points;
         if (!pts || pts.length === 0) continue;
         pts.sort(function(a, b) { return a.x - b.x; });
-        var color = COLORS[d % COLORS.length];
+        var color = (plots[d].color >= 0) ? COLORS[plots[d].color % COLORS.length] : COLORS[d % COLORS.length];
 
         if (pts.length > 1) {
           ctx.strokeStyle = color;

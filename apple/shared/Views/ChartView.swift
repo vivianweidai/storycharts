@@ -6,7 +6,18 @@ struct ChartView: View {
     let isEditable: Bool
     var onPointDragged: ((ChartPoint, CGPoint) -> Void)?
 
-    private let plotColors: [Color] = [.blue, .red, .green, .orange, .purple, .cyan]
+    private let plotColors: [Color] = [
+        Color(red: 0.29, green: 0.50, blue: 0.83),  // blue
+        Color(red: 0.88, green: 0.38, blue: 0.25),  // red/orange
+        Color(red: 0.31, green: 0.63, blue: 0.25),  // green
+        Color(red: 0.83, green: 0.63, blue: 0.13),  // gold
+        Color(red: 0.56, green: 0.38, blue: 0.75),  // purple
+        Color(red: 0.16, green: 0.62, blue: 0.56),  // teal
+        Color(red: 0.88, green: 0.44, blue: 0.60),  // pink
+        Color(red: 0.54, green: 0.40, blue: 0.25),  // brown
+        Color(red: 0.31, green: 0.31, blue: 0.69),  // indigo
+        Color(red: 0.88, green: 0.50, blue: 0.31),  // coral
+    ]
     private let gridCount = 20
 
     var body: some View {
@@ -55,6 +66,11 @@ struct ChartView: View {
         .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
     }
 
+    private func colorForPlot(_ plot: Plot, index: Int) -> Color {
+        let ci = (plot.color != nil && plot.color! >= 0) ? plot.color! : index
+        return plotColors[ci % plotColors.count]
+    }
+
     private func plotLines(size: CGFloat) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             let points = chartPoints
@@ -69,7 +85,7 @@ struct ChartView: View {
                         else { path.addLine(to: p) }
                     }
                 }
-                .stroke(plotColors[idx % plotColors.count], lineWidth: 2.5)
+                .stroke(colorForPlot(plot, index: idx), lineWidth: 2.5)
             }
         }
     }
@@ -83,7 +99,7 @@ struct ChartView: View {
             ForEach(points) { pt in
                 let pos = chartPosition(pt, in: size)
                 Circle()
-                    .fill(plotColors[idx % plotColors.count])
+                    .fill(colorForPlot(plot, index: idx))
                     .frame(width: 12, height: 12)
                     .position(pos)
                     .gesture(

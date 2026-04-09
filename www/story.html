@@ -108,6 +108,7 @@
     }
 
     // Lines
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     for (var d = 0; d < g.length; d++) {
       var pts = g[d]; if (pts.length < 2) continue;
       ctx.strokeStyle = COLORS[d % COLORS.length];
@@ -117,6 +118,7 @@
       for (var i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y));
       ctx.stroke();
     }
+    ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
 
     // Points
     for (var d = 0; d < g.length; d++) {
@@ -445,7 +447,7 @@
           '<span style="font-size:0.9em">' + esc(pt.label || 'Turning point') + '</span>' +
           (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' : '') +
         '</div>' +
-        '<div style="font-size:0.8em;color:#888">(' + pt.x + ', ' + pt.y + ')</div>';
+        '';
       if (isOwnerGlobal) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
     } else {
       el.innerHTML =
@@ -510,7 +512,7 @@
         '<button class="btn btn-sm btn-primary" id="ie-ok" style="flex-shrink:0">ok</button>' +
         '<button class="btn btn-sm btn-danger" id="ie-del" style="flex-shrink:0">del</button>' +
       '</div>' +
-      '<div style="font-size:0.8em;color:#888;margin-top:4px">(' + pt.x + ', ' + pt.y + ')</div>';
+      '';
     document.getElementById('ie-label').focus();
     document.getElementById('ie-ok').onclick = function() {
       pt.label = document.getElementById('ie-label').value.trim().replace(/<[^>]*>/g, '').slice(0, 60);

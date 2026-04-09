@@ -126,6 +126,8 @@ async function listStories(env) {
 }
 
 async function createStory(env, user, body) {
+  const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM stories WHERE userid = ?').bind(user.userid).first();
+  if (count.cnt >= 20) return json({ error: 'Maximum 20 stories per user. Delete a story to make room.' }, 400);
   const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 60).trim() || 'Untitled';
   const r = await env.DB.prepare('INSERT INTO stories (title, userid, email) VALUES (?, ?, ?)').bind(title, user.userid, user.email).run();
   const sid = r.meta.last_row_id;
@@ -150,7 +152,7 @@ async function createStory(env, user, body) {
   const batch = [];
   let totalPts = 0;
   for (let pi = 0; pi < plotIds.length; pi++) {
-    const n = Math.min(3 + Math.floor(Math.random() * 6), 50 - totalPts);
+    const n = Math.min(3 + Math.floor(Math.random() * 6), 100 - totalPts);
     totalPts += n;
     const labels = tpLabels[names[pi]] || tpLabels.Internal;
     const shuffled = labels.slice().sort(() => Math.random() - 0.5);
@@ -224,7 +226,7 @@ async function saveChartPoints(env, user, storyId, body) {
   const del = env.DB.prepare('DELETE FROM chart_points WHERE story_id = ?').bind(storyId);
   const ins = env.DB.prepare('INSERT INTO chart_points (story_id, plot_id, x_pos, y_val, label) VALUES (?, ?, ?, ?, ?)');
   const batch = [del];
-  const pts = (body.points || []).slice(0, 50);
+  const pts = (body.points || []).slice(0, 100);
   for (const cp of pts) {
     batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), cp.label || ''));
   }

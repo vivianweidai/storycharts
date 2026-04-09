@@ -19,7 +19,7 @@
   <script src="/app.js"></script>
   <script>
   var COLORS = ['#4a7fd4','#e06040','#50a040','#d4a020','#9060c0','#2a9d8f','#e07098','#8a6540','#5050b0','#e08050'];
-  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_POINTS = 50;
+  var MAX_TITLE = 60, MAX_PLOTS = 10, MAX_POINTS = 100;
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   var storyId, plots, points;
   var canvas, ctx, W, H, PAD = 20;
@@ -507,7 +507,7 @@
   }
 
   function addPlot() {
-    if (plots.length >= MAX_PLOTS) return;
+    if (plots.length >= MAX_PLOTS) { alert('Maximum ' + MAX_PLOTS + ' plots per story. Delete a plot to make room.'); return; }
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E','Plot F','Plot G','Plot H','Plot I','Plot J'];
     var name = names[plots.length % names.length];
     var ci = plots.length % COLORS.length;
@@ -521,7 +521,7 @@
   }
 
   function addTP(di) {
-    if (points.length >= MAX_POINTS) return;
+    if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
     var plot = plots[di];
     points.push({ plot_id: plot.id, x: 5000, y: 5000, label: 'New point' });
     savePoints(); draw(); updateInfo();

@@ -139,7 +139,7 @@ struct ChartView: View {
             path.move(to: CGPoint(x: 0, y: size / 2))
             path.addLine(to: CGPoint(x: size, y: size / 2))
         }
-        .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
     }
 
     func colorForPlot(_ plot: Plot, index: Int) -> Color {
@@ -256,7 +256,7 @@ struct ChartThumbnailView: View {
             path.move(to: CGPoint(x: 0, y: size / 2))
             path.addLine(to: CGPoint(x: size, y: size / 2))
         }
-        .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
     }
 
     private func thumbnailLines(size: CGFloat) -> some View {

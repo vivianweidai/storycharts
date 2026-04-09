@@ -1,0 +1,51 @@
+{
+  "" : {
+    "const-values" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary.swiftconstvalues",
+    "dependencies" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary.d",
+    "diagnostics" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary.dia",
+    "emit-module-dependencies" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary-emit-module.dia",
+    "pch" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryCharts-primary.swiftdeps"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/iphone/StoryChartsApp.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryChartsApp.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryChartsApp.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryChartsApp.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/API/APIClient.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/APIClient.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/APIClient.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/APIClient.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/API/AuthManager.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/AuthManager.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/AuthManager.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/AuthManager.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/Models/Story.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/Story.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/Story.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/Story.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/Views/ChartView.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/ChartView.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/ChartView.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/ChartView.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/Views/StoryDetailView.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryDetailView.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryDetailView.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryDetailView.o"
+  },
+  "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/shared/Views/StoryListView.swift" : {
+    "index-unit-output-path" : "/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryListView.o",
+    "llvm-bc" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryListView.bc",
+    "object" : "/Users/jamesdai/CLAUDE/GITHUB/storycharts/apple/build/StoryCharts.build/Release-iphoneos/StoryCharts.build/Objects-normal/arm64/StoryListView.o"
+  }
+}

@@ -30,8 +30,8 @@ struct ChartPoint: Codable, Identifiable {
 }
 
 struct StoryDetail: Codable {
-    let story: Story
-    let plots: [Plot]
+    var story: Story
+    var plots: [Plot]
     let chartPoints: [ChartPoint]
     let isOwner: Bool?
 }

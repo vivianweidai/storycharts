@@ -11,6 +11,16 @@ struct StoryDetailView: View {
     @State private var playX: Int? = nil
     @State private var highlightedPoint: PointHighlight? = nil
     @State private var playTask: Task<Void, Never>? = nil
+
+    // Drag state
+    @State private var isDragging = false
+
+    // Edit state
+    @State private var isEditingTitle = false
+    @State private var editTitleText = ""
+    @State private var editPlotName = ""
+    @State private var editSceneLabel = ""
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -23,18 +33,50 @@ struct StoryDetailView: View {
                         plots: detail.plots,
                         chartPoints: chartPoints,
                         isEditable: detail.isOwner ?? false,
+                        onPointDragged: { point, newPos in
+                            if let idx = chartPoints.firstIndex(where: { $0.id == point.id }) {
+                                chartPoints[idx].x_pos = Int(newPos.x)
+                                chartPoints[idx].y_val = Int(newPos.y)
+                            }
+                            isDragging = false
+                            Task { await saveAllPoints() }
+                        },
+                        onPointDragChanged: { point, newPos in
+                            isDragging = true
+                            if let idx = chartPoints.firstIndex(where: { $0.id == point.id }) {
+                                chartPoints[idx].x_pos = Int(newPos.x)
+                                chartPoints[idx].y_val = Int(newPos.y)
+                            }
+                        },
+                        onDragSelected: { hl in
+                            savePendingEdits()
+                            stopPlayback()
+                            highlightedPoint = hl
+                            editPlotName = hl.plotTitle
+                            editSceneLabel = hl.label
+                        },
                         playX: playX,
                         highlightedPoint: highlightedPoint,
                         onPointTapped: { hl in
+                            guard !isDragging else { return }
+                            savePendingEdits()
                             stopPlayback()
-                            highlightedPoint = (hl == highlightedPoint) ? nil : hl
+                            if hl == highlightedPoint {
+                                highlightedPoint = nil
+                            } else {
+                                highlightedPoint = hl
+                                if let hl = hl {
+                                    editPlotName = hl.plotTitle
+                                    editSceneLabel = hl.label
+                                }
+                            }
                         }
                     )
                     .padding()
 
-                    // Info panel
+                    // Info / edit panel
                     infoPanel
-                        .frame(height: 50)
+                        .frame(height: detail.isOwner ?? false ? 100 : 70)
                 }
             } else {
                 ContentUnavailableView("Not Found", systemImage: "questionmark", description: Text("Story could not be loaded."))
@@ -49,6 +91,10 @@ struct StoryDetailView: View {
                 ToolbarItem(placement: .primaryAction) {
                     if detail.isOwner ?? false {
                         Menu {
+                            Button("Edit Story Name", systemImage: "pencil") {
+                                editTitleText = detail.story.title
+                                isEditingTitle = true
+                            }
                             Button("Add Plot", systemImage: "plus.square") {
                                 Task { await addPlot() }
                             }
@@ -72,32 +118,200 @@ struct StoryDetailView: View {
                 }
             }
         }
+        .alert("Edit Story Name", isPresented: $isEditingTitle) {
+            TextField("Title", text: $editTitleText)
+            Button("OK") { saveTitle() }
+            Button("Cancel", role: .cancel) { }
+        }
         .task {
             await loadStory()
+            // Auto-start playback for viewers after 3 seconds
+            if let d = detail, !(d.isOwner ?? false) {
+                try? await Task.sleep(for: .seconds(3))
+                if !isPlaying && highlightedPoint == nil {
+                    startPlayback()
+                }
+            }
         }
         .onDisappear {
             stopPlayback()
         }
     }
 
+    // MARK: - Info Panel
+
     @ViewBuilder
     private var infoPanel: some View {
         if let hl = highlightedPoint {
-            VStack(spacing: 2) {
-                Text(hl.plotTitle)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(hl.color)
-                if !hl.label.isEmpty {
-                    Text(hl.label)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            if detail?.isOwner ?? false {
+                editPanel(highlight: hl)
+            } else {
+                readOnlyInfoPanel(highlight: hl)
             }
-            .transition(.opacity)
         } else {
             Color.clear
         }
+    }
+
+    @ViewBuilder
+    private func readOnlyInfoPanel(highlight: PointHighlight) -> some View {
+        VStack(spacing: 6) {
+            Text(highlight.plotTitle)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(highlight.color)
+            if !highlight.label.isEmpty {
+                Text(highlight.label)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+            }
+        }
+        .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private func editPanel(highlight: PointHighlight) -> some View {
+        VStack(spacing: 8) {
+            // Row 1: Plot name + delete plot
+            HStack(spacing: 8) {
+                TextField("Plot name", text: $editPlotName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(highlight.color)
+                    .onSubmit { savePlotName(highlight: highlight) }
+
+                Button(role: .destructive) {
+                    Task { await deletePlot(highlight: highlight) }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+            }
+
+            // Row 2: Scene label + delete scene
+            HStack(spacing: 8) {
+                TextField("Scene label", text: $editSceneLabel)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.subheadline)
+                    .onSubmit { saveSceneLabel(highlight: highlight) }
+
+                Button(role: .destructive) {
+                    Task { await deleteScene(highlight: highlight) }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Edit Actions
+
+    private func savePendingEdits() {
+        guard let hl = highlightedPoint else { return }
+        // Save plot name if changed
+        if editPlotName != hl.plotTitle {
+            savePlotName(highlight: hl)
+        }
+        // Save scene label if changed
+        if editSceneLabel != hl.label {
+            saveSceneLabel(highlight: hl)
+        }
+    }
+
+    private func saveTitle() {
+        let trimmed = String(editTitleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        let newTitle = trimmed.isEmpty ? "Untitled" : trimmed
+        isEditingTitle = false
+        detail?.story.title = newTitle
+        Task {
+            try? await APIClient.shared.updateStory(storyId, title: newTitle)
+        }
+    }
+
+    private func savePlotName(highlight: PointHighlight) {
+        guard let detail = detail else { return }
+        guard highlight.plotIndex < detail.plots.count else { return }
+        let plot = detail.plots[highlight.plotIndex]
+        let trimmed = String(editPlotName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        guard !trimmed.isEmpty else { return }
+        // Update local state
+        self.detail?.plots[highlight.plotIndex].title = trimmed
+        highlightedPoint = PointHighlight(
+            plotIndex: highlight.plotIndex,
+            pointIndex: highlight.pointIndex,
+            plotTitle: trimmed,
+            label: highlight.label,
+            color: highlight.color
+        )
+        Task {
+            try? await APIClient.shared.updatePlot(plot.id, title: trimmed, color: plot.color ?? -1)
+        }
+    }
+
+    private func saveSceneLabel(highlight: PointHighlight) {
+        guard let detail = detail else { return }
+        guard highlight.plotIndex < detail.plots.count else { return }
+        let plot = detail.plots[highlight.plotIndex]
+        let pts = chartPoints
+            .filter { $0.plot_id == plot.id }
+            .sorted { $0.x_pos < $1.x_pos }
+        guard highlight.pointIndex < pts.count else { return }
+        let point = pts[highlight.pointIndex]
+        let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+
+        if let idx = chartPoints.firstIndex(where: { $0.id == point.id }) {
+            chartPoints[idx].label = trimmed
+        }
+        highlightedPoint = PointHighlight(
+            plotIndex: highlight.plotIndex,
+            pointIndex: highlight.pointIndex,
+            plotTitle: highlight.plotTitle,
+            label: trimmed,
+            color: highlight.color
+        )
+        Task { await saveAllPoints() }
+    }
+
+    private func deletePlot(highlight: PointHighlight) async {
+        guard let detail = detail else { return }
+        guard highlight.plotIndex < detail.plots.count else { return }
+        let plot = detail.plots[highlight.plotIndex]
+        do {
+            try await APIClient.shared.deletePlot(plot.id)
+            highlightedPoint = nil
+            await reloadStory()
+        } catch {}
+    }
+
+    private func deleteScene(highlight: PointHighlight) async {
+        guard let detail = detail else { return }
+        guard highlight.plotIndex < detail.plots.count else { return }
+        let plot = detail.plots[highlight.plotIndex]
+        let pts = chartPoints
+            .filter { $0.plot_id == plot.id }
+            .sorted { $0.x_pos < $1.x_pos }
+        guard highlight.pointIndex < pts.count else { return }
+        let point = pts[highlight.pointIndex]
+
+        chartPoints.removeAll { $0.id == point.id }
+        highlightedPoint = nil
+        await saveAllPoints()
+    }
+
+    private func saveAllPoints() async {
+        let pts = chartPoints.map {
+            ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label)
+        }
+        do {
+            try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
+        } catch {}
     }
 
     // MARK: - Playback
@@ -221,25 +435,43 @@ struct StoryDetailView: View {
     }
 
     private func addPlot() async {
-        guard let detail = detail else { return }
+        guard let detail = detail else { print("addPlot: no detail"); return }
         let names = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
         let name = names[detail.plots.count % names.count]
         let color = detail.plots.count % ChartView.plotColors.count
         do {
             _ = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
             await reloadStory()
-        } catch {}
+        } catch {
+            print("addPlot error: \(error)")
+        }
     }
 
     private func addScene() async {
-        guard let detail = detail, let firstPlot = detail.plots.first else { return }
-        // Add to the first plot at center position
+        guard let detail = detail else { print("addScene: no detail"); return }
+        // If no plots exist, create one first
+        var targetPlotId: Int
+        if let hl = highlightedPoint, hl.plotIndex < detail.plots.count {
+            targetPlotId = detail.plots[hl.plotIndex].id
+        } else if let lastPlot = detail.plots.last {
+            targetPlotId = lastPlot.id
+        } else {
+            do {
+                let resp = try await APIClient.shared.createPlot(storyId: storyId, title: "Plot A", color: 0)
+                targetPlotId = resp.id
+            } catch {
+                print("addScene createPlot error: \(error)")
+                return
+            }
+        }
         var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
-        pts.append(ChartPointPayload(plot_id: firstPlot.id, x_pos: 5000, y_val: 5000, label: "New point"))
+        pts.append(ChartPointPayload(plot_id: targetPlotId, x_pos: 5000, y_val: 5000, label: ""))
         do {
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()
-        } catch {}
+        } catch {
+            print("addScene savePoints error: \(error)")
+        }
     }
 
     private func deleteStory() async {

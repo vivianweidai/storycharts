@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WatchStoryListView: View {
-    @State private var stories: [Story] = []
+    @State private var stories: [StoryListItem] = []
     @State private var isLoading = true
 
     var body: some View {

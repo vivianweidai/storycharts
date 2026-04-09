@@ -5,6 +5,7 @@ struct StoryListView: View {
     @State private var stories: [StoryListItem] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var createdStoryId: Int?
 
     var body: some View {
         Group {
@@ -27,6 +28,9 @@ struct StoryListView: View {
                     .padding()
                 }
             }
+        }
+        .navigationDestination(item: $createdStoryId) { storyId in
+            StoryDetailView(storyId: storyId)
         }
         .navigationTitle("Story Charts")
         .toolbar {
@@ -104,11 +108,10 @@ struct StoryListView: View {
 
     private func createStory() async {
         do {
-            _ = try await APIClient.shared.createStory(title: "My Story")
-            // Reload to show new story
+            let response = try await APIClient.shared.createStory(title: "My Story")
             await loadStories()
+            createdStoryId = response.id
         } catch APIError.unauthorized {
-            // Token expired, need to re-auth
             auth.signOut()
         } catch {
             errorMessage = "Failed to create story"

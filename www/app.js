@@ -1,5 +1,7 @@
 // StoryCharts — shared utilities
 
+var COLORS = ['#4a7fd4','#e06040','#50a040','#b8b020','#9060c0','#2a9d8f','#e07098','#8a6540','#3b2f80','#e08050'];
+
 async function api(method, path, body) {
   var opts = { method: method, headers: {} };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }

@@ -14,6 +14,8 @@ struct ChartView: View {
     let chartPoints: [ChartPoint]
     let isEditable: Bool
     var onPointDragged: ((ChartPoint, CGPoint) -> Void)?
+    var onPointDragChanged: ((ChartPoint, CGPoint) -> Void)?
+    var onDragSelected: ((PointHighlight) -> Void)?
 
     // Playback / tap state — driven by parent
     var playX: Int? = nil  // 0-10000, vertical sweep line position
@@ -33,6 +35,8 @@ struct ChartView: View {
         Color(red: 0.88, green: 0.50, blue: 0.31),
     ]
     private let gridCount = 20
+    private let inset: CGFloat = 0.05 // 5% padding inside chart edges
+    @State private var isDragging = false
 
     var body: some View {
         GeometryReader { geo in
@@ -51,8 +55,15 @@ struct ChartView: View {
             }
             .frame(width: size, height: size)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isEditable ? Color.blue.opacity(0.5) : Color(red: 0.55, green: 0.7, blue: 0.75).opacity(0.5), lineWidth: 1.5)
+                    .frame(width: size, height: size)
+            )
+            .coordinateSpace(name: "chart")
             .contentShape(Rectangle())
             .onTapGesture { location in
+                guard !isDragging else { return }
                 handleTap(at: location, chartSize: size)
             }
         }
@@ -88,7 +99,9 @@ struct ChartView: View {
     }
 
     private func sweepLine(size: CGFloat, x: Int) -> some View {
-        let px = CGFloat(x) / 10000.0 * size
+        let pad = size * inset
+        let inner = size - 2 * pad
+        let px = pad + CGFloat(x) / 10000.0 * inner
         return Path { path in
             path.move(to: CGPoint(x: px, y: 0))
             path.addLine(to: CGPoint(x: px, y: size))
@@ -131,13 +144,16 @@ struct ChartView: View {
         }
         .frame(width: size, height: size)
         .background(Color(red: 0.97, green: 0.98, blue: 1.0))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func midline(size: CGFloat) -> some View {
-        Path { path in
-            path.move(to: CGPoint(x: 0, y: size / 2))
-            path.addLine(to: CGPoint(x: size, y: size / 2))
+        let pad = size * inset
+        let inner = size - 2 * pad
+        let midY = pad + inner / 2
+        return Path { path in
+            path.move(to: CGPoint(x: 0, y: midY))
+            path.addLine(to: CGPoint(x: size, y: midY))
         }
         .stroke(Color.gray.opacity(0.5), lineWidth: 1)
     }
@@ -161,7 +177,7 @@ struct ChartView: View {
                         else { path.addLine(to: p) }
                     }
                 }
-                .stroke(colorForPlot(plot, index: idx), lineWidth: 2.5)
+                .stroke(colorForPlot(plot, index: idx), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
             }
         }
     }
@@ -175,19 +191,57 @@ struct ChartView: View {
             ForEach(Array(points.enumerated()), id: \.element.id) { pi, pt in
                 let pos = chartPosition(pt, in: size)
                 let isHighlighted = highlightedPoint?.plotIndex == idx && highlightedPoint?.pointIndex == pi
+                let dotSize: CGFloat = isHighlighted ? 14 : 10
+
                 Circle()
                     .fill(colorForPlot(plot, index: idx))
-                    .frame(width: isHighlighted ? 14 : 10, height: isHighlighted ? 14 : 10)
+                    .frame(width: dotSize, height: dotSize)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle().size(width: 44, height: 44))
                     .position(pos)
+                    .gesture(isEditable ? dragGesture(for: pt, plotIndex: idx, pointIndex: pi, plot: plot, chartSize: size) : nil)
             }
         }
     }
 
+    private func dragGesture(for point: ChartPoint, plotIndex: Int, pointIndex: Int, plot: Plot, chartSize: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 5, coordinateSpace: .named("chart"))
+            .onChanged { value in
+                if !isDragging {
+                    isDragging = true
+                    onDragSelected?(PointHighlight(
+                        plotIndex: plotIndex,
+                        pointIndex: pointIndex,
+                        plotTitle: plot.title,
+                        label: point.label,
+                        color: colorForPlot(plot, index: plotIndex)
+                    ))
+                }
+                let norm = normalizedFromPixel(value.location, chartSize: chartSize)
+                onPointDragChanged?(point, CGPoint(x: CGFloat(norm.x), y: CGFloat(norm.y)))
+            }
+            .onEnded { value in
+                let norm = normalizedFromPixel(value.location, chartSize: chartSize)
+                onPointDragged?(point, CGPoint(x: CGFloat(norm.x), y: CGFloat(norm.y)))
+                isDragging = false
+            }
+    }
+
     private func chartPosition(_ point: ChartPoint, in size: CGFloat) -> CGPoint {
-        CGPoint(
-            x: CGFloat(point.x_pos) / 10000.0 * size,
-            y: (1.0 - CGFloat(point.y_val) / 10000.0) * size
+        let pad = size * inset
+        let inner = size - 2 * pad
+        return CGPoint(
+            x: pad + CGFloat(point.x_pos) / 10000.0 * inner,
+            y: pad + (1.0 - CGFloat(point.y_val) / 10000.0) * inner
         )
+    }
+
+    private func normalizedFromPixel(_ location: CGPoint, chartSize: CGFloat) -> (x: Int, y: Int) {
+        let pad = chartSize * inset
+        let inner = chartSize - 2 * pad
+        let nx = Int(max(0, min(10000, (location.x - pad) / inner * 10000)))
+        let ny = Int(max(0, min(10000, (1.0 - (location.y - pad) / inner) * 10000)))
+        return (nx, ny)
     }
 }
 
@@ -196,6 +250,7 @@ struct ChartView: View {
 struct ChartThumbnailView: View {
     let plots: [StoryListPlot]
 
+    private static let goldenRatio: CGFloat = 1.618
     private let plotColors: [Color] = [
         Color(red: 0.29, green: 0.50, blue: 0.83),
         Color(red: 0.88, green: 0.38, blue: 0.25),
@@ -209,20 +264,22 @@ struct ChartThumbnailView: View {
         Color(red: 0.88, green: 0.50, blue: 0.31),
     ]
     private let gridCount = 20
+    private let inset: CGFloat = 0.05
 
     var body: some View {
         GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
+            let w = geo.size.width
+            let h = w / Self.goldenRatio
             ZStack {
-                thumbnailGrid(size: size)
-                thumbnailMidline(size: size)
-                thumbnailLines(size: size)
-                thumbnailDots(size: size)
+                thumbnailGrid(width: w, height: h)
+                thumbnailMidline(width: w, height: h)
+                thumbnailLines(width: w, height: h)
+                thumbnailDots(width: w, height: h)
             }
-            .frame(width: size, height: size)
+            .frame(width: w, height: h)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .aspectRatio(1, contentMode: .fit)
+        .aspectRatio(Self.goldenRatio, contentMode: .fit)
     }
 
     private func colorForPlot(_ plot: StoryListPlot, index: Int) -> Color {
@@ -230,66 +287,75 @@ struct ChartThumbnailView: View {
         return plotColors[ci % plotColors.count]
     }
 
-    private func thumbnailGrid(size: CGFloat) -> some View {
+    private func thumbnailGrid(width: CGFloat, height: CGFloat) -> some View {
         Canvas { ctx, _ in
-            let step = size / CGFloat(gridCount)
             let gridColor = Color(red: 0.85, green: 0.9, blue: 0.95)
+            let hStep = width / CGFloat(gridCount)
+            let vStep = height / CGFloat(gridCount)
             for i in 0...gridCount {
-                let pos = CGFloat(i) * step
                 var hPath = Path()
-                hPath.move(to: CGPoint(x: 0, y: pos))
-                hPath.addLine(to: CGPoint(x: size, y: pos))
+                let y = CGFloat(i) * vStep
+                hPath.move(to: CGPoint(x: 0, y: y))
+                hPath.addLine(to: CGPoint(x: width, y: y))
                 ctx.stroke(hPath, with: .color(gridColor), lineWidth: 0.5)
                 var vPath = Path()
-                vPath.move(to: CGPoint(x: pos, y: 0))
-                vPath.addLine(to: CGPoint(x: pos, y: size))
+                let x = CGFloat(i) * hStep
+                vPath.move(to: CGPoint(x: x, y: 0))
+                vPath.addLine(to: CGPoint(x: x, y: height))
                 ctx.stroke(vPath, with: .color(gridColor), lineWidth: 0.5)
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: width, height: height)
         .background(Color(red: 0.97, green: 0.98, blue: 1.0))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func thumbnailMidline(size: CGFloat) -> some View {
+    private func thumbnailMidline(width: CGFloat, height: CGFloat) -> some View {
         Path { path in
-            path.move(to: CGPoint(x: 0, y: size / 2))
-            path.addLine(to: CGPoint(x: size, y: size / 2))
+            let padY = height * inset
+            let innerH = height - 2 * padY
+            let midY = padY + innerH / 2
+            path.move(to: CGPoint(x: 0, y: midY))
+            path.addLine(to: CGPoint(x: width, y: midY))
         }
         .stroke(Color.gray.opacity(0.5), lineWidth: 1)
     }
 
-    private func thumbnailLines(size: CGFloat) -> some View {
+    private func thumbnailLines(width: CGFloat, height: CGFloat) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             let sorted = plot.points.sorted { $0.x < $1.x }
             if sorted.count > 1 {
                 Path { path in
                     for (i, pt) in sorted.enumerated() {
-                        let p = thumbPosition(pt, in: size)
+                        let p = thumbPosition(pt, width: width, height: height)
                         if i == 0 { path.move(to: p) }
                         else { path.addLine(to: p) }
                     }
                 }
-                .stroke(colorForPlot(plot, index: idx), lineWidth: 2)
+                .stroke(colorForPlot(plot, index: idx), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
             }
         }
     }
 
-    private func thumbnailDots(size: CGFloat) -> some View {
+    private func thumbnailDots(width: CGFloat, height: CGFloat) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             ForEach(Array(plot.points.enumerated()), id: \.offset) { _, pt in
                 Circle()
                     .fill(colorForPlot(plot, index: idx))
                     .frame(width: 8, height: 8)
-                    .position(thumbPosition(pt, in: size))
+                    .position(thumbPosition(pt, width: width, height: height))
             }
         }
     }
 
-    private func thumbPosition(_ point: StoryListPoint, in size: CGFloat) -> CGPoint {
-        CGPoint(
-            x: CGFloat(point.x) / 10000.0 * size,
-            y: (1.0 - CGFloat(point.y) / 10000.0) * size
+    private func thumbPosition(_ point: StoryListPoint, width: CGFloat, height: CGFloat) -> CGPoint {
+        let padX = width * inset
+        let padY = height * inset
+        let innerW = width - 2 * padX
+        let innerH = height - 2 * padY
+        return CGPoint(
+            x: padX + CGFloat(point.x) / 10000.0 * innerW,
+            y: padY + (1.0 - CGFloat(point.y) / 10000.0) * innerH
         )
     }
 }

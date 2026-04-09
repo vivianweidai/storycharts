@@ -32,7 +32,13 @@
   var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
   var PLAY_SWEEP_MS = 1500; // sweep between TPs
 
-  function plotColor(di) { return COLORS[di % COLORS.length]; }
+  function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
+  function nextFreeColor() {
+    var used = {};
+    for (var i = 0; i < plots.length; i++) if (plots[i].color >= 0) used[plots[i].color % COLORS.length] = true;
+    for (var c = 0; c < COLORS.length; c++) if (!used[c]) return c;
+    return plots.length % COLORS.length;
+  }
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
   function toY(v) { return PAD + (1 - v / 10000) * (H - 2 * PAD); }
   function fromX(px) { return Math.max(0, Math.min(10000, Math.round(((px - PAD) / (W - 2 * PAD)) * 10000))); }
@@ -509,8 +515,9 @@
     savePendingEdits();
     var names = ['Plot A','Plot B','Plot C','Plot D','Plot E','Plot F','Plot G','Plot H','Plot I','Plot J'];
     var name = names[plots.length % names.length];
-    api('POST', 'stories/' + storyId + '/plots', { title: name, color: -1 }).then(function(r) {
-      plots.push({ id: r.id, title: name, color: -1 });
+    var ci = nextFreeColor();
+    api('POST', 'stories/' + storyId + '/plots', { title: name, color: ci }).then(function(r) {
+      plots.push({ id: r.id, title: name, color: ci });
       for (var i = 0; i < 3; i++) {
         points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
       }

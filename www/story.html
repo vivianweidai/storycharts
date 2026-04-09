@@ -605,6 +605,7 @@
       document.getElementById('add-plot-btn').onclick = addPlot;
     } else {
       document.getElementById('play-btn').onclick = togglePlayback;
+      setTimeout(function() { if (!playing) startPlayback(); }, 3000);
     }
 
     // Inline title edit

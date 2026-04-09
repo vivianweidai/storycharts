@@ -494,8 +494,9 @@
       draw(); updateInfo(); savePoints();
     };
     var addTpBtn = document.getElementById('ie-add-tp');
-    if (points.length >= MAX_POINTS) addTpBtn.disabled = true;
+    addTpBtn.disabled = points.length >= MAX_POINTS;
     addTpBtn.onclick = function() {
+      if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
       addTP(di);
       infoEditing = false;
     };
@@ -503,7 +504,10 @@
 
   function updateAddPlotBtn() {
     var btn = document.getElementById('add-plot-btn');
-    if (btn) btn.disabled = plots.length >= MAX_PLOTS;
+    if (!btn) return;
+    var atLimit = plots.length >= MAX_PLOTS;
+    btn.disabled = atLimit;
+    btn.title = atLimit ? 'Maximum ' + MAX_PLOTS + ' plots' : '';
   }
 
   function addPlot() {

@@ -61,6 +61,7 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 .btn-danger { color: #cf222e; border-color: #cf222e; }
 .btn-danger:hover { background: #cf222e; color: #fff; }
 .btn-sm { padding: 3px 8px; font-size: 0.8em; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-add { padding: 10px 24px; font-size: 0.95em; border-radius: 8px; font-weight: 500; }
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }

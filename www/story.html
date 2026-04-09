@@ -447,7 +447,7 @@
     if (!nameEl || !labelEl) { editingDi = -1; editingPi = -1; return; }
     var plot = plots[editingDi];
     if (!plot) { editingDi = -1; editingPi = -1; return; }
-    var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 40) || 'Plot';
+    var name = nameEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 1000) || 'Plot';
     if (name !== plot.title) {
       plot.title = name;
       api('PUT', 'plots/' + plot.id, { title: name });
@@ -455,7 +455,7 @@
     var g = grouped();
     var pt = g[editingDi] && g[editingDi][editingPi];
     if (pt) {
-      var label = labelEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 60);
+      var label = labelEl.value.trim().replace(/<[^>]*>/g, '').slice(0, 1000);
       if (label !== pt.label) {
         pt.label = label;
         savePoints();
@@ -488,12 +488,12 @@
       editingDi = di; editingPi = pi;
       el.innerHTML =
         '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">' +
-          '<input id="ie-name" type="text" maxlength="40" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
+          '<input id="ie-name" type="text" maxlength="1000" value="' + esc(plot.title) + '" placeholder="Plot name" style="min-width:0;flex:1;padding:4px 8px;border:1.5px solid ' + color + ';border-radius:6px;font-size:16px;font-family:inherit;font-weight:600;color:' + color + '">' +
           '<button class="btn btn-sm btn-danger" id="ie-del-plot" style="flex-shrink:0">del</button>' +
         '</div>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
-          '<input id="ie-label" type="text" maxlength="60" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
-          '<button class="btn btn-sm btn-danger" id="ie-del-scene" style="flex-shrink:0">del</button>' +
+          '<input id="ie-label" type="text" maxlength="1000" value="' + esc(pt.label || '') + '" placeholder="Scene label" style="min-width:0;flex:1;padding:4px 8px;border:1px solid #d1d9e0;border-radius:6px;font-size:16px;font-family:inherit">' +
+          '<button class="btn btn-sm btn-danger" id="ie-del-scene" style="flex-shrink:0" title="Press Delete to remove scene">del</button>' +
         '</div>';
       document.getElementById('ie-del-plot').onclick = function() {
         api('DELETE', 'plots/' + plot.id);
@@ -610,7 +610,7 @@
         '<h1 id="title-text" style="margin:0">' + esc(storyTitle) + '</h1>' +
         (isOwner ? '<button class="btn btn-sm" id="edit-btn">edit</button>' : '') +
         '<span style="margin-left:auto;font-size:0.8em;display:flex;align-items:center;gap:8px">' +
-          (isOwner ? '<button type="button" class="btn btn-sm" id="add-scene-btn" style="font-size:0.85em">+ add scene<span style="display:block;font-size:0.7em;color:#888;font-weight:400">A</span></button> <button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em">+ add plot<span style="display:block;font-size:0.7em;color:rgba(255,255,255,0.7);font-weight:400">P</span></button>' :
+          (isOwner ? '<button type="button" class="btn btn-sm" id="add-scene-btn" style="font-size:0.85em" title="Press A to add a scene">+ add scene</button> <button type="button" class="btn btn-sm btn-primary" id="add-plot-btn" style="font-size:0.85em" title="Press P to add a new plot">+ add plot</button>' :
                      '<button type="button" class="btn btn-sm" id="play-btn" style="font-size:0.85em">play</button>') +
         '</span>' +
       '</div>' +

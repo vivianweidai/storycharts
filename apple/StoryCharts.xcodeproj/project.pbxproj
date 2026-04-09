@@ -22,6 +22,7 @@
 		A200000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011; };
 		A200000006 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012; };
 		A200000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B200000004; };
+		A200000008 /* WatchSceneListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000005; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		B200000002 /* WatchStoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryListView.swift; sourceTree = "<group>"; };
 		B200000003 /* WatchStoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryDetailView.swift; sourceTree = "<group>"; };
 		B200000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B200000005 /* WatchSceneListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSceneListView.swift; sourceTree = "<group>"; };
 		C100000001 /* StoryCharts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StoryCharts.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C200000001 /* StoryCharts Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "StoryCharts Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -104,6 +106,7 @@
 				B200000001 /* StoryChartsWatchApp.swift */,
 				B200000002 /* WatchStoryListView.swift */,
 				B200000003 /* WatchStoryDetailView.swift */,
+				B200000005 /* WatchSceneListView.swift */,
 				B200000004 /* Assets.xcassets */,
 			);
 			path = watch;
@@ -215,6 +218,7 @@
 				A200000004,
 				A200000005,
 				A200000006,
+				A200000008,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

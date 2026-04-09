@@ -62,6 +62,10 @@ function requireAuth(user) {
   return user ? null : json({ error: 'Unauthorized' }, 401);
 }
 
+function sanitize(input, maxLen, fallback) {
+  return (input || '').replace(/<[^>]*>/g, '').slice(0, maxLen).trim() || fallback;
+}
+
 // --- Auth ---
 
 function getUser(request) {
@@ -135,7 +139,7 @@ async function listStories(env) {
 async function createStory(env, user, body) {
   const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM stories WHERE userid = ?').bind(user.userid).first();
   if (count.cnt >= 30) return json({ error: 'Maximum 30 stories per user. Delete a story to make room.' }, 400);
-  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 200).trim() || 'Untitled';
+  const title = sanitize(body.title, 200, 'Untitled');
   const r = await env.DB.prepare('INSERT INTO stories (title, userid) VALUES (?, ?)').bind(title, user.userid).run();
   const sid = r.meta.last_row_id;
 
@@ -184,7 +188,7 @@ async function getStory(env, user, id) {
 
 async function updateStory(env, user, id, body) {
   await requireOwner(env, user, id);
-  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 200).trim() || 'Untitled';
+  const title = sanitize(body.title, 200, 'Untitled');
   await env.DB.prepare('UPDATE stories SET title = ? WHERE id = ?').bind(title, id).run();
   return json({ ok: true });
 }
@@ -202,8 +206,7 @@ async function createPlot(env, user, storyId, body) {
   const existing = await env.DB.prepare('SELECT COUNT(*) as cnt FROM plots WHERE story_id = ?').bind(storyId).first();
   if (existing.cnt >= 10) return json({ error: 'Maximum 10 plots per story' }, 400);
   const color = typeof body.color === 'number' ? body.color : -1;
-  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 2000).trim() || 'Plot';
-  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order, color) VALUES (?, ?, 100, ?)').bind(storyId, title, color).run();
+  const r = await env.DB.prepare('INSERT INTO plots (story_id, title, sort_order, color) VALUES (?, ?, 100, ?)').bind(storyId, sanitize(body.title, 2000, 'Plot'), color).run();
   return json({ id: r.meta.last_row_id }, 201);
 }
 
@@ -212,8 +215,7 @@ async function updatePlot(env, user, id, body) {
   if (!p) return json({ error: 'Not found' }, 404);
   await requireOwner(env, user, p.story_id);
   const color = typeof body.color === 'number' ? body.color : -1;
-  const title = (body.title || '').replace(/<[^>]*>/g, '').slice(0, 2000).trim() || 'Plot';
-  await env.DB.prepare('UPDATE plots SET title = ?, color = ? WHERE id = ?').bind(title, color, id).run();
+  await env.DB.prepare('UPDATE plots SET title = ?, color = ? WHERE id = ?').bind(sanitize(body.title, 2000, 'Plot'), color, id).run();
   return json({ ok: true });
 }
 
@@ -237,7 +239,7 @@ async function saveChartPoints(env, user, storyId, body) {
   const batch = [del];
   const pts = (body.points || []).slice(0, 100);
   for (const cp of pts) {
-    batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), (cp.label || '').replace(/<[^>]*>/g, '').slice(0, 2000)));
+    batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), sanitize(cp.label, 2000, '')));
   }
   await env.DB.batch(batch);
   return json({ ok: true });

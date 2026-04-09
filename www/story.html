@@ -219,11 +219,23 @@
     draw(); updateInfo();
   }
 
+  var SNAP_PX = 12; // snap threshold in pixels
+
+  function snapX(rawX) {
+    var snapVal = rawX, bestDist = SNAP_PX + 1;
+    for (var i = 0; i < points.length; i++) {
+      if (points[i] === dragPt) continue;
+      var dist = Math.abs(toX(points[i].x) - toX(rawX));
+      if (dist < bestDist) { bestDist = dist; snapVal = points[i].x; }
+    }
+    return snapVal;
+  }
+
   function onMove(e) {
     if (isDragging && dragPt) {
       e.preventDefault(); didMove = true;
       var pos = getPos(e);
-      dragPt.x = fromX(pos.x); dragPt.y = fromY(pos.y);
+      dragPt.x = snapX(fromX(pos.x)); dragPt.y = fromY(pos.y);
       draw(); updateInfo();
       return;
     }

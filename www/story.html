@@ -664,6 +664,24 @@
       if (hoverDi >= 0) { hoverDi = -1; hoverPi = -1; draw(); }
     });
 
+    window.addEventListener('keydown', function(e) {
+      if (!isOwnerGlobal || infoEditing || isDragging || playing) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selDi < 0 || selPi < 0) return;
+        // Don't intercept if user is typing in an input
+        var tag = document.activeElement && document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        e.preventDefault();
+        var g = grouped();
+        var pt = g[selDi] && g[selDi][selPi];
+        if (!pt) return;
+        var idx = points.indexOf(pt);
+        if (idx >= 0) points.splice(idx, 1);
+        selDi = -1; selPi = -1;
+        draw(); updateInfo(); savePoints();
+      }
+    });
+
   })();
   </script>
 </body>

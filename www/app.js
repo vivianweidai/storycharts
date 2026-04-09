@@ -45,7 +45,7 @@ function renderHeader(user) {
            '</div>' +
          '</div>';
   } else {
-    s += '<a href="/api/auth/login" class="auth-btn">Login</a>';
+    s += '<a href="/api/auth/login?redirect=' + encodeURIComponent(location.pathname + location.search) + '" class="auth-btn">Login</a>';
   }
   h.innerHTML = s;
 

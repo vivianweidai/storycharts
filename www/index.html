@@ -148,7 +148,7 @@
       var html = '';
 
       if (!stories.length && !user) {
-        html += '<p class="empty">No story charts yet. <a href="/api/auth/login">Login</a> to create one.</p>';
+        html += '<p class="empty">No story charts yet. <a href="/api/auth/login?redirect=' + encodeURIComponent(location.pathname) + '">Login</a> to create one.</p>';
       } else if (!stories.length) {
         html += '<p class="empty">No story charts yet.</p>';
       } else {
@@ -184,7 +184,7 @@
       var createBtn = document.getElementById('create-btn');
       if (createBtn) {
         createBtn.onclick = function() {
-          if (!user) { window.location.href = '/api/auth/login'; return; }
+          if (!user) { window.location.href = '/api/auth/login?redirect=' + encodeURIComponent(location.pathname); return; }
           var myStories = stories.filter(function(s) { return user && s.userid === user.email; });
           if (myStories.length >= MAX_STORIES) {
             alert('Maximum ' + MAX_STORIES + ' stories per user. Delete a story to make room.');

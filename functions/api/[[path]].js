@@ -18,6 +18,8 @@ export async function onRequest(context) {
         const token = cookie ? cookie[1] : '';
         return Response.redirect(`storycharts://auth?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`, 302);
       }
+      const redirect = url.searchParams.get('redirect');
+      if (redirect && redirect.startsWith('/')) return Response.redirect(url.origin + redirect, 302);
       return Response.redirect(url.origin + '/', 302);
     }
     if (path === '/auth/me') return json(user);

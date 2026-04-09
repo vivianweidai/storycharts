@@ -151,9 +151,7 @@
 
     if (tipPt) {
       var label = tipPt.label || 'Turning point';
-      var plotName = plots[tipDi] ? plots[tipDi].title : '';
-      var text = plotName ? plotName + ': ' + label : label;
-      drawTooltip(toX(tipPt.x), toY(tipPt.y), text, tipDi);
+      drawTooltip(toX(tipPt.x), toY(tipPt.y), label, tipDi);
     }
   }
 
@@ -400,7 +398,28 @@
     }
 
     draw();
+    updatePlayInfo();
     playRAF = requestAnimationFrame(playTick);
+  }
+
+  function updatePlayInfo() {
+    var el = document.getElementById('info');
+    if (!el) return;
+    if (playHighlight) {
+      var g = grouped();
+      var pt = g[playHighlight.di] && g[playHighlight.di][playHighlight.pi];
+      if (pt) {
+        var color = COLORS[playHighlight.di % COLORS.length];
+        var plot = plots[playHighlight.di];
+        el.innerHTML =
+          '<div style="text-align:center">' +
+            '<div style="color:' + color + ';font-weight:600">' + esc(plot ? plot.title : '') + '</div>' +
+            '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' +
+          '</div>';
+        return;
+      }
+    }
+    el.innerHTML = '';
   }
 
   function stopPlayback() {
@@ -410,6 +429,7 @@
     if (playRAF) { cancelAnimationFrame(playRAF); playRAF = null; }
     updatePlayBtn();
     draw();
+    updateInfo();
   }
 
   function togglePlayback() {
@@ -428,6 +448,7 @@
   function updateInfo() {
     var el = document.getElementById('info');
     if (infoEditing) return;
+    if (playing) { updatePlayInfo(); return; }
 
     // Use hover state for read-only, selection state for owner
     var di = selDi >= 0 ? selDi : (!isOwnerGlobal ? hoverDi : -1);
@@ -447,10 +468,11 @@
       var g = grouped();
       var pt = g[di][pi];
       el.innerHTML =
-        '<div style="display:flex;align-items:center;gap:8px;justify-content:center">' +
-          '<span style="color:' + color + ';font-weight:600">' + esc(plot.title) + '</span>' +
-          '<span style="font-size:0.9em">' + esc(pt.label || 'Turning point') + '</span>' +
-          (isOwnerGlobal ? '<button class="btn btn-sm" id="info-edit-btn">edit</button>' : '') +
+        '<div style="text-align:center">' +
+          '<div style="color:' + color + ';font-weight:600">' + esc(plot.title) +
+            (isOwnerGlobal ? ' <button class="btn btn-sm" id="info-edit-btn" style="margin-left:6px">edit</button>' : '') +
+          '</div>' +
+          '<div style="font-size:0.9em;color:#555;margin-top:2px">' + esc(pt.label || 'Turning point') + '</div>' +
         '</div>';
       if (isOwnerGlobal) document.getElementById('info-edit-btn').onclick = function() { editTP(selDi, selPi); };
     } else {

@@ -35,7 +35,10 @@
   function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
   function nextFreeColor() {
     var used = {};
-    for (var i = 0; i < plots.length; i++) if (plots[i].color >= 0) used[plots[i].color % COLORS.length] = true;
+    for (var i = 0; i < plots.length; i++) {
+      var c = (plots[i].color >= 0) ? plots[i].color % COLORS.length : i % COLORS.length;
+      used[c] = true;
+    }
     for (var c = 0; c < COLORS.length; c++) if (!used[c]) return c;
     return plots.length % COLORS.length;
   }

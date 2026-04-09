@@ -522,7 +522,7 @@
     if (points.length >= MAX_POINTS) { alert('Maximum ' + MAX_POINTS + ' turning points per story. Delete some to make room.'); return; }
     savePendingEdits(); editingDi = -1; editingPi = -1;
     var plot = plots[di];
-    var newPt = { plot_id: plot.id, x: 5000, y: 5000, label: 'New point' };
+    var newPt = { plot_id: plot.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' };
     points.push(newPt);
     if (autoSelect) {
       var g = grouped();

@@ -127,7 +127,11 @@ class APIClient {
             throw APIError.serverError(http.statusCode)
         }
 
-        return try JSONDecoder().decode(T.self, from: data)
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError
+        }
     }
 }
 
@@ -160,5 +164,6 @@ enum APIError: Error {
     case forbidden
     case notFound
     case networkError
+    case decodingError
     case serverError(Int)
 }

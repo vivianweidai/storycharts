@@ -300,9 +300,14 @@
     if (didMove) { didMove = false; return; }
     infoEditing = false;
     var pos = getPos(e);
-    if (hitPoint(pos.x, pos.y)) return;
+    var hit = hitPoint(pos.x, pos.y);
+    if (hit) {
+      if (playing) stopPlayback();
+      if (!isDragging) { selDi = hit.di; selPi = hit.pi; draw(); updateInfo(); }
+      return;
+    }
     var lh = hitLine(pos.x, pos.y);
-    if (lh) { selDi = lh.di; selPi = -1; draw(); updateInfo(); return; }
+    if (lh) { if (playing) stopPlayback(); selDi = lh.di; selPi = -1; draw(); updateInfo(); return; }
     selDi = -1; selPi = -1; draw(); updateInfo();
   }
 

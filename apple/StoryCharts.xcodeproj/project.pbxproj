@@ -14,6 +14,7 @@
 		A100000005 /* StoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000013; };
 		A100000006 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000014; };
 		A100000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000002; };
+		A100000008 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000015; };
 		A200000001 /* StoryChartsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001; };
 		A200000002 /* WatchStoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000002; };
 		A200000003 /* WatchStoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000003; };
@@ -31,6 +32,7 @@
 		B100000012 /* ChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartView.swift; sourceTree = "<group>"; };
 		B100000013 /* StoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryListView.swift; sourceTree = "<group>"; };
 		B100000014 /* StoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryDetailView.swift; sourceTree = "<group>"; };
+		B100000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		B200000001 /* StoryChartsWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryChartsWatchApp.swift; sourceTree = "<group>"; };
 		B200000002 /* WatchStoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryListView.swift; sourceTree = "<group>"; };
 		B200000003 /* WatchStoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryDetailView.swift; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				B100000011 /* APIClient.swift */,
+				B100000015 /* AuthManager.swift */,
 			);
 			path = api;
 			sourceTree = "<group>";
@@ -198,6 +201,7 @@
 				A100000004,
 				A100000005,
 				A100000006,
+				A100000008,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

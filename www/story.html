@@ -37,7 +37,7 @@
   var dragPt = null, isDragging = false, didMove = false;
   var hoverDi = -1, hoverPi = -1; // hover state
   var playing = false, playX = -1, playRAF = null, playHighlight = null, playStart = 0; // playback
-  var PLAY_PAUSE_MS = 3000; // pause at each TP
+  var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
   var PLAY_SWEEP_MS = 1500; // sweep between TPs
 
   function toX(v) { return PAD + (v / 10000) * (W - 2 * PAD); }
@@ -82,11 +82,9 @@
     // Playback vertical line
     if (playing && playX >= 0) {
       var lx = toX(playX);
-      ctx.strokeStyle = 'rgba(9,105,218,0.4)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(9,105,218,0.35)';
+      ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(lx, PAD); ctx.lineTo(lx, H - PAD); ctx.stroke();
-      ctx.setLineDash([]);
     }
 
     // Halo on selected/dragged/playback-highlighted point
@@ -317,7 +315,7 @@
     var all = [];
     for (var d = 0; d < g.length; d++) {
       for (var i = 0; i < g[d].length; i++) {
-        all.push({ di: d, pi: i, x: g[d][i].x });
+        all.push({ di: d, pi: i, x: g[d][i].x, label: g[d][i].label || '' });
       }
     }
     all.sort(function(a, b) { return a.x - b.x; });
@@ -325,6 +323,13 @@
   }
 
   var playSegments = []; // [{startX, endX, startTime, sweepEnd, pauseEnd}]
+
+  function pauseForLabel(label) {
+    // 0 chars = 3s, 60 chars = 6s, linear
+    var len = (label || '').length;
+    var t = Math.min(len / 60, 1);
+    return PLAY_PAUSE_MIN + t * (PLAY_PAUSE_MAX - PLAY_PAUSE_MIN);
+  }
 
   function buildPlaySegments() {
     var allPts = getAllPointsSorted();
@@ -334,13 +339,15 @@
     // Sweep from 0 to first TP
     var firstX = allPts[0].x;
     var sweepDur = firstX > 0 ? PLAY_SWEEP_MS * (firstX / 10000) : 0;
-    segs.push({ startX: 0, endX: firstX, pt: allPts[0], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + PLAY_PAUSE_MS });
+    var pause = pauseForLabel(allPts[0].label);
+    segs.push({ startX: 0, endX: firstX, pt: allPts[0], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + pause });
     t = segs[0].pauseEnd;
     // Between TPs
     for (var i = 1; i < allPts.length; i++) {
       var dist = allPts[i].x - allPts[i - 1].x;
       sweepDur = PLAY_SWEEP_MS * (dist / 10000);
-      segs.push({ startX: allPts[i - 1].x, endX: allPts[i].x, pt: allPts[i], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + PLAY_PAUSE_MS });
+      pause = pauseForLabel(allPts[i].label);
+      segs.push({ startX: allPts[i - 1].x, endX: allPts[i].x, pt: allPts[i], startTime: t, sweepEnd: t + sweepDur, pauseEnd: t + sweepDur + pause });
       t = segs[i].pauseEnd;
     }
     // Final sweep to end

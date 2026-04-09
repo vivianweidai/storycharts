@@ -315,8 +315,23 @@
     playSegments = buildPlaySegments();
     if (playSegments.length === 0) return;
     playing = true;
-    playStart = performance.now();
     playHighlight = null;
+
+    // If a TP is selected (via hover on read-only), start from its segment
+    var offset = 0;
+    var startDi = hoverDi >= 0 ? hoverDi : selDi;
+    var startPi = hoverPi >= 0 ? hoverPi : selPi;
+    if (startDi >= 0 && startPi >= 0) {
+      for (var i = 0; i < playSegments.length; i++) {
+        var seg = playSegments[i];
+        if (seg.pt && seg.pt.di === startDi && seg.pt.pi === startPi) {
+          offset = seg.sweepEnd; // start at the pause phase of this TP
+          break;
+        }
+      }
+    }
+    selDi = -1; selPi = -1;
+    playStart = performance.now() - offset;
     updatePlayBtn();
     playTick();
   }

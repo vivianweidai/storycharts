@@ -6,30 +6,34 @@ struct StoryDetailView: View {
     @State private var isLoading = true
     @State private var chartPoints: [ChartPoint] = []
 
+    // Playback state
+    @State private var isPlaying = false
+    @State private var playX: Int? = nil
+    @State private var highlightedPoint: PointHighlight? = nil
+    @State private var playTask: Task<Void, Never>? = nil
+
     var body: some View {
         Group {
             if isLoading {
                 ProgressView("Loading...")
             } else if let detail = detail {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        ChartView(
-                            plots: detail.plots,
-                            chartPoints: chartPoints,
-                            isEditable: detail.isOwner ?? false,
-                            onPointDragged: { point, location in
-                                handleDrag(point: point, location: location)
-                            }
-                        )
-                        .padding()
-
-                        // Legend
-                        legendSection(detail: detail)
-
-                        // Plot details
-                        plotsSection(detail: detail)
-                    }
+                VStack(spacing: 0) {
+                    ChartView(
+                        plots: detail.plots,
+                        chartPoints: chartPoints,
+                        isEditable: detail.isOwner ?? false,
+                        playX: playX,
+                        highlightedPoint: highlightedPoint,
+                        onPointTapped: { hl in
+                            stopPlayback()
+                            highlightedPoint = (hl == highlightedPoint) ? nil : hl
+                        }
+                    )
                     .padding()
+
+                    // Info panel
+                    infoPanel
+                        .frame(height: 50)
                 }
             } else {
                 ContentUnavailableView("Not Found", systemImage: "questionmark", description: Text("Story could not be loaded."))
@@ -39,65 +43,154 @@ struct StoryDetailView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        .toolbar {
+            if detail != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        if isPlaying { stopPlayback() }
+                        else { startPlayback() }
+                    } label: {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    }
+                }
+            }
+        }
         .task {
             await loadStory()
         }
+        .onDisappear {
+            stopPlayback()
+        }
     }
 
-    private func legendSection(detail: StoryDetail) -> some View {
-        let colors: [Color] = [.blue, .red, .green, .orange, .purple, .cyan]
-        return VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(detail.plots.enumerated()), id: \.element.id) { idx, plot in
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(colors[idx % colors.count])
-                        .frame(width: 10, height: 10)
-                    Text(plot.title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Spacer()
+    @ViewBuilder
+    private var infoPanel: some View {
+        if let hl = highlightedPoint {
+            VStack(spacing: 2) {
+                Text(hl.plotTitle)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(hl.color)
+                if !hl.label.isEmpty {
+                    Text(hl.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+            .transition(.opacity)
+        } else {
+            Color.clear
         }
-        .padding(.horizontal)
     }
 
-    private func plotsSection(detail: StoryDetail) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ForEach(detail.plots) { plot in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(plot.title)
-                        .font(.headline)
-                    let points = chartPoints
-                        .filter { $0.plot_id == plot.id }
-                        .sorted { $0.x_pos < $1.x_pos }
+    // MARK: - Playback
 
-                    if !points.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(points) { pt in
-                                    if !pt.label.isEmpty {
-                                        Text(pt.label)
-                                            .font(.caption)
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 4)
-                                            .background(.quaternary)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        }
+    private func allPointsSorted() -> [(plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)] {
+        guard let detail = detail else { return [] }
+        var all: [(plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)] = []
+        let chartView = ChartView(plots: detail.plots, chartPoints: chartPoints, isEditable: false)
+        for (idx, plot) in detail.plots.enumerated() {
+            let pts = chartPoints
+                .filter { $0.plot_id == plot.id }
+                .sorted { $0.x_pos < $1.x_pos }
+            for (pi, pt) in pts.enumerated() {
+                all.append((idx, pi, pt.x_pos, pt.label, plot.title, chartView.colorForPlot(plot, index: idx)))
+            }
+        }
+        all.sort { $0.x < $1.x }
+        return all
+    }
+
+    private func startPlayback() {
+        let allPts = allPointsSorted()
+        guard !allPts.isEmpty else { return }
+
+        isPlaying = true
+        highlightedPoint = nil
+
+        playTask = Task { @MainActor in
+            let sweepMs: Double = 1500 // sweep between TPs (for full 0-10000 range)
+            let pauseMin: Double = 2.0
+            let pauseMax: Double = 4.0
+
+            func pauseDuration(_ label: String) -> Double {
+                let t = min(Double(label.count) / 60.0, 1.0)
+                return pauseMin + t * (pauseMax - pauseMin)
+            }
+
+            // Build segments: sweep to each point, pause, then sweep to next
+            struct Segment {
+                let startX: Int
+                let endX: Int
+                let point: (plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)?
+                let sweepDuration: Double
+                let pauseDuration: Double
+            }
+
+            var segments: [Segment] = []
+
+            // First segment: 0 to first point
+            let first = allPts[0]
+            let firstSweep = sweepMs * (Double(first.x) / 10000.0)
+            segments.append(Segment(startX: 0, endX: first.x, point: first, sweepDuration: firstSweep, pauseDuration: pauseDuration(first.label)))
+
+            // Between points
+            for i in 1..<allPts.count {
+                let dist = Double(allPts[i].x - allPts[i-1].x)
+                let sweep = sweepMs * (dist / 10000.0)
+                segments.append(Segment(startX: allPts[i-1].x, endX: allPts[i].x, point: allPts[i], sweepDuration: sweep, pauseDuration: pauseDuration(allPts[i].label)))
+            }
+
+            // Final sweep to end
+            let lastX = allPts.last!.x
+            if lastX < 10000 {
+                let sweep = sweepMs * (Double(10000 - lastX) / 10000.0)
+                segments.append(Segment(startX: lastX, endX: 10000, point: nil, sweepDuration: sweep, pauseDuration: 0))
+            }
+
+            let fps: Double = 60
+            let frameDuration = 1.0 / fps
+
+            for seg in segments {
+                guard !Task.isCancelled else { break }
+
+                // Sweep phase
+                if seg.sweepDuration > 0 {
+                    let frames = max(1, Int(seg.sweepDuration / 1000.0 * fps))
+                    for f in 0...frames {
+                        guard !Task.isCancelled else { break }
+                        let t = Double(f) / Double(frames)
+                        playX = seg.startX + Int(Double(seg.endX - seg.startX) * t)
+                        highlightedPoint = nil
+                        try? await Task.sleep(for: .seconds(frameDuration))
                     }
                 }
-                .padding()
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                guard !Task.isCancelled else { break }
+
+                // Pause at point
+                if let pt = seg.point {
+                    playX = seg.endX
+                    highlightedPoint = PointHighlight(
+                        plotIndex: pt.plotIndex,
+                        pointIndex: pt.pointIndex,
+                        plotTitle: pt.plotTitle,
+                        label: pt.label,
+                        color: pt.color
+                    )
+                    try? await Task.sleep(for: .seconds(seg.pauseDuration))
+                }
             }
+
+            stopPlayback()
         }
     }
 
-    private func handleDrag(point: ChartPoint, location: CGPoint) {
-        // TODO: convert screen coordinates back to 0-10000 range and update
+    private func stopPlayback() {
+        playTask?.cancel()
+        playTask = nil
+        isPlaying = false
+        playX = nil
     }
 
     private func loadStory() async {

@@ -164,12 +164,10 @@
         html += '</div>';
       }
 
-      if (user) {
-        html += '<hr class="divider">';
-        html += '<div class="create-section">' +
-                  '<span class="create-label" id="create-btn"><span id="create-text"></span><span id="create-cursor"></span></span>' +
-                '</div>';
-      }
+      html += '<hr class="divider">';
+      html += '<div class="create-section">' +
+                '<span class="create-label" id="create-btn"><span id="create-text"></span><span id="create-cursor"></span></span>' +
+              '</div>';
 
       content.innerHTML = html;
 
@@ -185,6 +183,7 @@
       var createBtn = document.getElementById('create-btn');
       if (createBtn) {
         createBtn.onclick = function() {
+          if (!user) { window.location.href = '/api/auth/login'; return; }
           showModal('Create Story Chart', [
             { label: 'Title', name: 'title', value: '' }
           ], function(data) {

@@ -105,6 +105,15 @@ struct StoryDetailView: View {
         let allPts = allPointsSorted()
         guard !allPts.isEmpty else { return }
 
+        // If a point is selected, find its index in the sorted list to start from
+        let startFromIndex: Int
+        if let hl = highlightedPoint,
+           let idx = allPts.firstIndex(where: { $0.plotIndex == hl.plotIndex && $0.pointIndex == hl.pointIndex }) {
+            startFromIndex = idx
+        } else {
+            startFromIndex = 0
+        }
+
         isPlaying = true
         highlightedPoint = nil
 
@@ -129,13 +138,14 @@ struct StoryDetailView: View {
 
             var segments: [Segment] = []
 
-            // First segment: 0 to first point
-            let first = allPts[0]
-            let firstSweep = sweepMs * (Double(first.x) / 10000.0)
-            segments.append(Segment(startX: 0, endX: first.x, point: first, sweepDuration: firstSweep, pauseDuration: pauseDuration(first.label)))
+            // First segment: sweep from starting x to the first point in range
+            let startX = startFromIndex > 0 ? allPts[startFromIndex].x : 0
+            let first = allPts[startFromIndex]
+            let firstSweep = startFromIndex > 0 ? 0.0 : sweepMs * (Double(first.x) / 10000.0)
+            segments.append(Segment(startX: startX, endX: first.x, point: first, sweepDuration: firstSweep, pauseDuration: pauseDuration(first.label)))
 
-            // Between points
-            for i in 1..<allPts.count {
+            // Between remaining points
+            for i in (startFromIndex + 1)..<allPts.count {
                 let dist = Double(allPts[i].x - allPts[i-1].x)
                 let sweep = sweepMs * (dist / 10000.0)
                 segments.append(Segment(startX: allPts[i-1].x, endX: allPts[i].x, point: allPts[i], sweepDuration: sweep, pauseDuration: pauseDuration(allPts[i].label)))

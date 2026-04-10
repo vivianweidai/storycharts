@@ -29,9 +29,9 @@ export async function onRequest(context) {
     const plotM = path.match(/^\/plots\/(\d+)$/);
 
     // Stories
-    if (path === '/stories' && method === 'GET') return listStories(env);
+    if (path === '/stories' && method === 'GET') return listStories(env, user);
     if (path === '/stories' && method === 'POST') return requireAuth(user) || createStory(env, user, await request.json());
-    if (storyM && method === 'GET') return getStory(env, user, storyM[1]);
+    if (storyM && method === 'GET') return requireAuth(user) || getStory(env, user, storyM[1]);
     if (storyM && method === 'PUT') return requireAuth(user) || updateStory(env, user, storyM[1], await request.json());
     if (storyM && method === 'DELETE') return requireAuth(user) || deleteStory(env, user, storyM[1]);
 
@@ -113,10 +113,15 @@ async function requireOwner(env, user, storyId) {
 
 // --- Stories ---
 
-async function listStories(env) {
-  const stories = (await env.DB.prepare('SELECT id, title, userid FROM stories ORDER BY id DESC').all()).results;
-  const allPlots = (await env.DB.prepare('SELECT id, story_id, title, color FROM plots ORDER BY sort_order').all()).results;
-  const allPoints = (await env.DB.prepare('SELECT plot_id, x_pos, y_val FROM chart_points ORDER BY x_pos').all()).results;
+async function listStories(env, user) {
+  // Stories are private to their owner. Logged-out callers see an empty list.
+  if (!user) return json([]);
+  const stories = (await env.DB.prepare('SELECT id, title, userid FROM stories WHERE userid = ? ORDER BY id DESC').bind(user.userid).all()).results;
+  if (stories.length === 0) return json([]);
+  const storyIds = stories.map(s => s.id);
+  const placeholders = storyIds.map(() => '?').join(',');
+  const allPlots = (await env.DB.prepare(`SELECT id, story_id, title, color FROM plots WHERE story_id IN (${placeholders}) ORDER BY sort_order`).bind(...storyIds).all()).results;
+  const allPoints = (await env.DB.prepare(`SELECT plot_id, x_pos, y_val FROM chart_points WHERE story_id IN (${placeholders}) ORDER BY x_pos`).bind(...storyIds).all()).results;
   const plotsByStory = {};
   for (const p of allPlots) {
     if (!plotsByStory[p.story_id]) plotsByStory[p.story_id] = [];
@@ -178,12 +183,14 @@ async function createStory(env, user, body) {
 
 async function getStory(env, user, id) {
   const story = await env.DB.prepare('SELECT * FROM stories WHERE id = ?').bind(id).first();
-  if (!story) return json({ error: 'Not found' }, 404);
+  // Return 404 for both missing stories and stories owned by someone else
+  // so we don't leak which IDs exist.
+  if (!story || story.userid !== user.userid) return json({ error: 'Not found' }, 404);
   const [plots, cps] = await Promise.all([
     env.DB.prepare('SELECT * FROM plots WHERE story_id = ? ORDER BY sort_order').bind(id).all(),
     env.DB.prepare('SELECT * FROM chart_points WHERE story_id = ? ORDER BY plot_id, x_pos').bind(id).all()
   ]);
-  return json({ story, plots: plots.results, chartPoints: cps.results, isOwner: user && user.userid === story.userid });
+  return json({ story, plots: plots.results, chartPoints: cps.results, isOwner: true });
 }
 
 async function updateStory(env, user, id, body) {

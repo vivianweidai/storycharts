@@ -17,47 +17,73 @@ struct WatchStoryDetailView: View {
             if isLoading {
                 ProgressView()
             } else if let detail = detail {
-                ScrollView {
-                    VStack(spacing: 8) {
-                        // Chart — full width, auto-plays
-                        ChartView(
-                            plots: detail.plots,
-                            chartPoints: detail.chartPoints,
-                            isEditable: false,
-                            playX: playX,
-                            highlightedPoint: highlightedPoint
-                        )
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            // Chart — full width, auto-plays
+                            ChartView(
+                                plots: detail.plots,
+                                chartPoints: detail.chartPoints,
+                                isEditable: false,
+                                playX: playX,
+                                highlightedPoint: highlightedPoint
+                            )
 
-                        // Scene list grouped by plot
-                        ForEach(Array(detail.plots.enumerated()), id: \.element.id) { idx, plot in
-                            let scenes = detail.chartPoints
-                                .filter { $0.plot_id == plot.id }
-                                .sorted { $0.x_pos < $1.x_pos }
+                            // Scene list grouped by plot
+                            ForEach(Array(detail.plots.enumerated()), id: \.element.id) { idx, plot in
+                                let scenes = detail.chartPoints
+                                    .filter { $0.plot_id == plot.id }
+                                    .sorted { $0.x_pos < $1.x_pos }
 
-                            if !scenes.isEmpty {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    // Plot header
-                                    HStack(spacing: 6) {
-                                        Circle()
-                                            .fill(ChartView.plotColors[plotColorIndex(plot, index: idx)])
-                                            .frame(width: 8, height: 8)
-                                        Text(plot.title)
-                                            .font(.caption2.weight(.semibold))
-                                            .foregroundStyle(ChartView.plotColors[plotColorIndex(plot, index: idx)])
-                                    }
+                                if !scenes.isEmpty {
+                                    let plotColor = ChartView.plotColors[plotColorIndex(plot, index: idx)]
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        // Plot header
+                                        HStack(spacing: 6) {
+                                            Circle()
+                                                .fill(plotColor)
+                                                .frame(width: 8, height: 8)
+                                            Text(plot.title)
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(plotColor)
+                                        }
 
-                                    // Scene rows
-                                    ForEach(scenes) { scene in
-                                        NavigationLink(destination: WatchSceneListView(detail: detail)) {
-                                            Text(scene.label.isEmpty ? "—" : scene.label)
-                                                .font(.caption2)
-                                                .foregroundStyle(.primary)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        // Scene rows
+                                        ForEach(Array(scenes.enumerated()), id: \.element.id) { sceneIdx, scene in
+                                            let isActive = highlightedPoint?.plotIndex == idx
+                                                && highlightedPoint?.pointIndex == sceneIdx
+                                            NavigationLink(destination: WatchSceneListView(detail: detail)) {
+                                                Text(scene.label.isEmpty ? "—" : scene.label)
+                                                    .font(.caption2)
+                                                    .fontWeight(isActive ? .bold : .regular)
+                                                    .foregroundStyle(isActive ? plotColor : .primary)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                    .padding(.vertical, 2)
+                                                    .padding(.horizontal, 4)
+                                                    .background(
+                                                        RoundedRectangle(cornerRadius: 4)
+                                                            .fill(plotColor.opacity(isActive ? 0.18 : 0))
+                                                    )
+                                            }
+                                            .id(scene.id)
                                         }
                                     }
+                                    .padding(.horizontal, 4)
                                 }
-                                .padding(.horizontal, 4)
                             }
+                        }
+                    }
+                    .onChange(of: highlightedPoint) { _, newValue in
+                        guard let hl = newValue,
+                              let detail = detail,
+                              hl.plotIndex < detail.plots.count else { return }
+                        let scenes = detail.chartPoints
+                            .filter { $0.plot_id == detail.plots[hl.plotIndex].id }
+                            .sorted { $0.x_pos < $1.x_pos }
+                        guard hl.pointIndex < scenes.count else { return }
+                        let targetId = scenes[hl.pointIndex].id
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(targetId, anchor: .center)
                         }
                     }
                 }

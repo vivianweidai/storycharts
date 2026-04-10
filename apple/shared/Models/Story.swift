@@ -33,6 +33,13 @@ struct StoryDetail: Codable {
     let isOwner: Bool?
 }
 
+extension Array where Element == ChartPoint {
+    // Points belonging to a plot, sorted by x_pos (timeline order).
+    func scenes(for plotId: Int) -> [ChartPoint] {
+        self.filter { $0.plot_id == plotId }.sorted { $0.x_pos < $1.x_pos }
+    }
+}
+
 // MARK: - List API models (lightweight, inline plots+points)
 
 struct StoryListItem: Codable, Identifiable {

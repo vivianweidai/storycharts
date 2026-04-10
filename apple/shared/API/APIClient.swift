@@ -22,7 +22,7 @@ class APIClient {
     }
 
     func createStory(title: String) async throws -> CreateResponse {
-        return try await post("stories", body: ["title": title])
+        try await post("stories", body: ["title": title])
     }
 
     func updateStory(_ id: Int, title: String) async throws {
@@ -36,17 +36,11 @@ class APIClient {
     // MARK: - Plots
 
     func createPlot(storyId: Int, title: String, color: Int = -1) async throws -> CreateResponse {
-        return try await post("stories/\(storyId)/plots", bodyRaw: [
-            "title": title,
-            "color": color
-        ])
+        try await post("stories/\(storyId)/plots", body: ["title": title, "color": color])
     }
 
     func updatePlot(_ id: Int, title: String, color: Int = -1) async throws {
-        let _: OKResponse = try await put("plots/\(id)", bodyRaw: [
-            "title": title,
-            "color": color
-        ])
+        let _: OKResponse = try await put("plots/\(id)", body: ["title": title, "color": color])
     }
 
     func deletePlot(_ id: Int) async throws {
@@ -56,16 +50,17 @@ class APIClient {
     // MARK: - Chart Points
 
     func saveChartPoints(storyId: Int, points: [ChartPointPayload]) async throws {
-        let body: [String: Any] = ["points": points.map { $0.dict }]
-        let _: OKResponse = try await post("stories/\(storyId)/chartpoints", bodyRaw: body)
+        let _: OKResponse = try await post(
+            "stories/\(storyId)/chartpoints",
+            body: ["points": points.map { $0.dict }]
+        )
     }
 
     // MARK: - Auth
 
     func getMe() async throws -> User? {
         do {
-            let user: User = try await get("auth/me")
-            return user
+            return try await get("auth/me") as User
         } catch APIError.unauthorized {
             return nil
         }
@@ -74,61 +69,45 @@ class APIClient {
     // MARK: - Networking
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
-        return try await request(path, method: "GET")
+        try await request(path, method: "GET")
     }
 
-    private func post<T: Decodable>(_ path: String, body: [String: String]) async throws -> T {
-        return try await request(path, method: "POST", body: body)
+    private func post<T: Decodable>(_ path: String, body: [String: Any]) async throws -> T {
+        try await request(path, method: "POST", body: body)
     }
 
-    private func post<T: Decodable>(_ path: String, bodyRaw: [String: Any]) async throws -> T {
-        return try await request(path, method: "POST", bodyRaw: bodyRaw)
-    }
-
-    private func put<T: Decodable>(_ path: String, body: [String: String]) async throws -> T {
-        return try await request(path, method: "PUT", body: body)
-    }
-
-    private func put<T: Decodable>(_ path: String, bodyRaw: [String: Any]) async throws -> T {
-        return try await request(path, method: "PUT", bodyRaw: bodyRaw)
+    private func put<T: Decodable>(_ path: String, body: [String: Any]) async throws -> T {
+        try await request(path, method: "PUT", body: body)
     }
 
     private func delete<T: Decodable>(_ path: String) async throws -> T {
-        return try await request(path, method: "DELETE")
+        try await request(path, method: "DELETE")
     }
 
     private func request<T: Decodable>(
         _ path: String,
         method: String,
-        body: [String: String]? = nil,
-        bodyRaw: [String: Any]? = nil
+        body: [String: Any]? = nil
     ) async throws -> T {
-        let url = baseURL.appendingPathComponent(path)
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
-
         if let token = authToken {
             req.addValue("CF_Authorization=\(token)", forHTTPHeaderField: "Cookie")
         }
-
         if let body = body {
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
-            req.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        } else if let bodyRaw = bodyRaw {
-            req.httpBody = try JSONSerialization.data(withJSONObject: bodyRaw)
             req.addValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
         let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse else {
-            throw APIError.networkError
-        }
+        guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
 
-        if http.statusCode == 401 { throw APIError.unauthorized }
-        if http.statusCode == 403 { throw APIError.forbidden }
-        if http.statusCode == 404 { throw APIError.notFound }
-        guard (200...299).contains(http.statusCode) else {
-            throw APIError.serverError(http.statusCode)
+        switch http.statusCode {
+        case 200...299: break
+        case 401: throw APIError.unauthorized
+        case 403: throw APIError.forbidden
+        case 404: throw APIError.notFound
+        default:  throw APIError.serverError(http.statusCode)
         }
 
         do {

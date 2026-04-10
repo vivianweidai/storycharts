@@ -253,15 +253,12 @@ struct StoryDetailView: View {
             label: highlight.label,
             color: highlight.color
         )
+        // Preserve the plot's color on rename; if somehow still unassigned,
+        // resolve to the next free index so we never write -1 back.
+        let colorToSave = (plot.color ?? -1) >= 0
+            ? plot.color!
+            : ChartView.resolvedColorIndex(plots: detail.plots, at: highlight.plotIndex)
         Task {
-            // Preserve the plot's color on rename; if somehow still unassigned,
-            // resolve to the next free index so we never write -1 back.
-            let colorToSave: Int
-            if let c = plot.color, c >= 0 {
-                colorToSave = c
-            } else {
-                colorToSave = ChartView.resolvedColorIndex(plots: detail.plots, at: highlight.plotIndex)
-            }
             try? await APIClient.shared.updatePlot(plot.id, title: trimmed, color: colorToSave)
         }
     }
@@ -270,9 +267,7 @@ struct StoryDetailView: View {
         guard let detail = detail else { return }
         guard highlight.plotIndex < detail.plots.count else { return }
         let plot = detail.plots[highlight.plotIndex]
-        let pts = chartPoints
-            .filter { $0.plot_id == plot.id }
-            .sorted { $0.x_pos < $1.x_pos }
+        let pts = chartPoints.scenes(for: plot.id)
         guard highlight.pointIndex < pts.count else { return }
         let point = pts[highlight.pointIndex]
         let trimmed = String(editSceneLabel.trimmingCharacters(in: .whitespacesAndNewlines).prefix(2000))
@@ -305,9 +300,7 @@ struct StoryDetailView: View {
         guard let detail = detail else { return }
         guard highlight.plotIndex < detail.plots.count else { return }
         let plot = detail.plots[highlight.plotIndex]
-        let pts = chartPoints
-            .filter { $0.plot_id == plot.id }
-            .sorted { $0.x_pos < $1.x_pos }
+        let pts = chartPoints.scenes(for: plot.id)
         guard highlight.pointIndex < pts.count else { return }
         let point = pts[highlight.pointIndex]
 
@@ -316,124 +309,38 @@ struct StoryDetailView: View {
         await saveAllPoints()
     }
 
-    private func saveAllPoints() async {
-        let pts = chartPoints.map {
+    private var pointPayloads: [ChartPointPayload] {
+        chartPoints.map {
             ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label)
         }
-        do {
-            try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
-        } catch {}
+    }
+
+    private func saveAllPoints() async {
+        try? await APIClient.shared.saveChartPoints(storyId: storyId, points: pointPayloads)
     }
 
     // MARK: - Playback
 
-    private func allPointsSorted() -> [(plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)] {
-        guard let detail = detail else { return [] }
-        var all: [(plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)] = []
-        let chartView = ChartView(plots: detail.plots, chartPoints: chartPoints, isEditable: false)
-        for (idx, plot) in detail.plots.enumerated() {
-            let pts = chartPoints
-                .filter { $0.plot_id == plot.id }
-                .sorted { $0.x_pos < $1.x_pos }
-            for (pi, pt) in pts.enumerated() {
-                all.append((idx, pi, pt.x_pos, pt.label, plot.title, chartView.colorForPlot(plot, index: idx)))
-            }
-        }
-        all.sort { $0.x < $1.x }
-        return all
-    }
-
     private func startPlayback() {
-        let allPts = allPointsSorted()
-        guard !allPts.isEmpty else { return }
+        guard let detail = detail else { return }
+        let scenes = playbackScenes(plots: detail.plots, chartPoints: chartPoints)
+        guard !scenes.isEmpty else { return }
 
-        // If a point is selected, find its index in the sorted list to start from
-        let startFromIndex: Int
-        if let hl = highlightedPoint,
-           let idx = allPts.firstIndex(where: { $0.plotIndex == hl.plotIndex && $0.pointIndex == hl.pointIndex }) {
-            startFromIndex = idx
-        } else {
-            startFromIndex = 0
-        }
+        // If a point is selected, resume playback from its position.
+        let startIdx = highlightedPoint
+            .flatMap { hl in scenes.firstIndex { $0.plotIndex == hl.plotIndex && $0.pointIndex == hl.pointIndex } }
+            ?? 0
 
+        let segments = buildSegments(from: scenes, startingAt: startIdx)
         isPlaying = true
         highlightedPoint = nil
 
         playTask = Task { @MainActor in
-            let sweepMs: Double = 1500 // sweep between TPs (for full 0-10000 range)
-            let pauseMin: Double = 2.0
-            let pauseMax: Double = 4.0
-
-            func pauseDuration(_ label: String) -> Double {
-                let t = min(Double(label.count) / 60.0, 1.0)
-                return pauseMin + t * (pauseMax - pauseMin)
-            }
-
-            // Build segments: sweep to each point, pause, then sweep to next
-            struct Segment {
-                let startX: Int
-                let endX: Int
-                let point: (plotIndex: Int, pointIndex: Int, x: Int, label: String, plotTitle: String, color: Color)?
-                let sweepDuration: Double
-                let pauseDuration: Double
-            }
-
-            var segments: [Segment] = []
-
-            // First segment: sweep from starting x to the first point in range
-            let startX = startFromIndex > 0 ? allPts[startFromIndex].x : 0
-            let first = allPts[startFromIndex]
-            let firstSweep = startFromIndex > 0 ? 0.0 : sweepMs * (Double(first.x) / 10000.0)
-            segments.append(Segment(startX: startX, endX: first.x, point: first, sweepDuration: firstSweep, pauseDuration: pauseDuration(first.label)))
-
-            // Between remaining points
-            for i in (startFromIndex + 1)..<allPts.count {
-                let dist = Double(allPts[i].x - allPts[i-1].x)
-                let sweep = sweepMs * (dist / 10000.0)
-                segments.append(Segment(startX: allPts[i-1].x, endX: allPts[i].x, point: allPts[i], sweepDuration: sweep, pauseDuration: pauseDuration(allPts[i].label)))
-            }
-
-            // Final sweep to end
-            let lastX = allPts.last!.x
-            if lastX < 10000 {
-                let sweep = sweepMs * (Double(10000 - lastX) / 10000.0)
-                segments.append(Segment(startX: lastX, endX: 10000, point: nil, sweepDuration: sweep, pauseDuration: 0))
-            }
-
-            let fps: Double = 60
-            let frameDuration = 1.0 / fps
-
-            for seg in segments {
-                guard !Task.isCancelled else { break }
-
-                // Sweep phase
-                if seg.sweepDuration > 0 {
-                    let frames = max(1, Int(seg.sweepDuration / 1000.0 * fps))
-                    for f in 0...frames {
-                        guard !Task.isCancelled else { break }
-                        let t = Double(f) / Double(frames)
-                        playX = seg.startX + Int(Double(seg.endX - seg.startX) * t)
-                        highlightedPoint = nil
-                        try? await Task.sleep(for: .seconds(frameDuration))
-                    }
-                }
-
-                guard !Task.isCancelled else { break }
-
-                // Pause at point
-                if let pt = seg.point {
-                    playX = seg.endX
-                    highlightedPoint = PointHighlight(
-                        plotIndex: pt.plotIndex,
-                        pointIndex: pt.pointIndex,
-                        plotTitle: pt.plotTitle,
-                        label: pt.label,
-                        color: pt.color
-                    )
-                    try? await Task.sleep(for: .seconds(seg.pauseDuration))
-                }
-            }
-
+            await runPlayback(
+                segments: segments, fps: 60, loop: false,
+                setPlayX: { playX = $0 },
+                setHighlight: { highlightedPoint = $0 }
+            )
             stopPlayback()
         }
     }
@@ -446,57 +353,50 @@ struct StoryDetailView: View {
     }
 
     private func nextFreeColor(existingPlots: [Plot]) -> Int {
-        // Mirror the resolver in ChartView: compute the effective color
-        // each existing plot would be rendered with, then return the
-        // smallest color index not among them.
-        var used = Set<Int>()
-        for i in 0..<existingPlots.count {
-            used.insert(ChartView.resolvedColorIndex(plots: existingPlots, at: i))
-        }
-        for c in 0..<ChartView.plotColors.count {
-            if !used.contains(c) { return c }
-        }
-        return existingPlots.count % ChartView.plotColors.count
+        // Resolve the effective color index of every existing plot, then
+        // return the smallest color index not among them.
+        let used = Set(ChartView.resolveColorIndices(colors: existingPlots.map { $0.color }))
+        return (0..<ChartView.plotColors.count).first(where: { !used.contains($0) })
+            ?? (existingPlots.count % ChartView.plotColors.count)
+    }
+
+    private static let plotNames = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
+
+    private func newScenePayload(plotId: Int) -> ChartPointPayload {
+        ChartPointPayload(plot_id: plotId,
+                          x_pos: Int.random(in: 0...10000),
+                          y_val: Int.random(in: 0...10000),
+                          label: "New scene")
     }
 
     private func addPlot() async {
-        guard detail != nil else { return }
-        let plots = detail!.plots
-        guard plots.count < 10 else { return }
-        let names = ["Plot A", "Plot B", "Plot C", "Plot D", "Plot E", "Plot F", "Plot G", "Plot H", "Plot I", "Plot J"]
-        let name = names[plots.count % names.count]
-        let color = nextFreeColor(existingPlots: plots)
+        guard let detail = detail, detail.plots.count < 10 else { return }
+        let name = Self.plotNames[detail.plots.count % Self.plotNames.count]
+        let color = nextFreeColor(existingPlots: detail.plots)
         do {
             let resp = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
-            // Add 3 random initial scenes, matching webapp behavior
-            var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
-            for _ in 0..<3 {
-                pts.append(ChartPointPayload(plot_id: resp.id, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: "New scene"))
-            }
+            // Seed 3 random initial scenes on the new plot, matching webapp.
+            var pts = pointPayloads
+            for _ in 0..<3 { pts.append(newScenePayload(plotId: resp.id)) }
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()
         } catch {}
     }
 
     private func addScene() async {
-        guard let detail = detail else { return }
-        guard chartPoints.count < 100 else { return }
-        // If no plots exist, create one first
-        var targetPlotId: Int
+        guard let detail = detail, chartPoints.count < 100 else { return }
+        // Target plot: the highlighted one, else the last plot, else create one.
+        let targetPlotId: Int
         if let hl = highlightedPoint, hl.plotIndex < detail.plots.count {
             targetPlotId = detail.plots[hl.plotIndex].id
-        } else if let lastPlot = detail.plots.last {
-            targetPlotId = lastPlot.id
+        } else if let last = detail.plots.last {
+            targetPlotId = last.id
         } else {
-            do {
-                let resp = try await APIClient.shared.createPlot(storyId: storyId, title: "Plot A", color: 0)
-                targetPlotId = resp.id
-            } catch {
-                return
-            }
+            guard let resp = try? await APIClient.shared.createPlot(storyId: storyId, title: "Plot A", color: 0) else { return }
+            targetPlotId = resp.id
         }
-        var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
-        pts.append(ChartPointPayload(plot_id: targetPlotId, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: "New scene"))
+        var pts = pointPayloads
+        pts.append(newScenePayload(plotId: targetPlotId))
         do {
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()
@@ -510,24 +410,17 @@ struct StoryDetailView: View {
         } catch {}
     }
 
-    private func reloadStory() async {
-        do {
-            let d = try await APIClient.shared.getStory(storyId)
-            detail = d
-            chartPoints = d.chartPoints
-            await lockInPlotColors()
-        } catch {}
-    }
+    private func reloadStory() async { await loadStory(resetLoadingFlag: false) }
 
-    private func loadStory() async {
+    private func loadStory(resetLoadingFlag: Bool = true) async {
         do {
             let d = try await APIClient.shared.getStory(storyId)
             detail = d
             chartPoints = d.chartPoints
-            isLoading = false
+            if resetLoadingFlag { isLoading = false }
             await lockInPlotColors()
         } catch {
-            isLoading = false
+            if resetLoadingFlag { isLoading = false }
         }
     }
 

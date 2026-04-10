@@ -9,6 +9,136 @@ struct PointHighlight: Equatable {
     let color: Color
 }
 
+// A flattened scene used by the playback pipeline: everything a sweep
+// segment needs to know about a point (its x, its labels, its plot color,
+// and the indices that let it be matched against a PointHighlight).
+struct PlaybackScene {
+    let plotIndex: Int
+    let pointIndex: Int   // index within its plot's scene list
+    let x: Int
+    let label: String
+    let plotTitle: String
+    let color: Color
+}
+
+// Build all scenes for a story sorted by x_pos (timeline order), ready for
+// playback sweeping. The plot color uses the shared resolver so ordering
+// collisions are handled identically to how they're rendered.
+func playbackScenes(plots: [Plot], chartPoints: [ChartPoint]) -> [PlaybackScene] {
+    let colorIdxs = ChartView.resolveColorIndices(colors: plots.map { $0.color })
+    var out: [PlaybackScene] = []
+    for (pi, plot) in plots.enumerated() {
+        let color = ChartView.plotColors[colorIdxs[pi]]
+        for (si, pt) in chartPoints.scenes(for: plot.id).enumerated() {
+            out.append(PlaybackScene(plotIndex: pi, pointIndex: si, x: pt.x_pos,
+                                     label: pt.label, plotTitle: plot.title, color: color))
+        }
+    }
+    out.sort { $0.x < $1.x }
+    return out
+}
+
+// A single playback segment: sweep from startX to endX, then optionally
+// pause at a highlighted scene.
+struct PlaybackSegment {
+    let startX: Int
+    let endX: Int
+    let point: PlaybackScene?   // nil = final trailing sweep to end of chart
+    let sweepMs: Double
+    let pauseSeconds: Double
+}
+
+private let playbackSweepMs: Double = 1500  // sweep time for a full 0-10000 traversal
+private let playbackPauseMin: Double = 2.0
+private let playbackPauseMax: Double = 4.0
+
+private func pauseSeconds(for label: String) -> Double {
+    let t = min(Double(label.count) / 60.0, 1.0)
+    return playbackPauseMin + t * (playbackPauseMax - playbackPauseMin)
+}
+
+// Turn a sorted list of playback scenes into a list of sweep+pause segments.
+// startingAt lets playback resume mid-timeline from a selected scene.
+func buildSegments(from scenes: [PlaybackScene], startingAt startIdx: Int = 0) -> [PlaybackSegment] {
+    guard !scenes.isEmpty, startIdx < scenes.count else { return [] }
+    var segs: [PlaybackSegment] = []
+
+    // First segment: sweep from chart origin (or resume position) to the
+    // first scene in range, then pause there.
+    let first = scenes[startIdx]
+    let firstStartX = startIdx > 0 ? scenes[startIdx].x : 0
+    let firstSweep = startIdx > 0 ? 0.0 : playbackSweepMs * (Double(first.x) / 10000.0)
+    segs.append(PlaybackSegment(startX: firstStartX, endX: first.x, point: first,
+                                sweepMs: firstSweep, pauseSeconds: pauseSeconds(for: first.label)))
+
+    // Subsequent segments: sweep between consecutive scenes.
+    for i in (startIdx + 1)..<scenes.count {
+        let dist = Double(scenes[i].x - scenes[i-1].x)
+        segs.append(PlaybackSegment(
+            startX: scenes[i-1].x, endX: scenes[i].x, point: scenes[i],
+            sweepMs: playbackSweepMs * (dist / 10000.0),
+            pauseSeconds: pauseSeconds(for: scenes[i].label)))
+    }
+
+    // Trailing sweep from last scene to chart end.
+    if let lastX = scenes.last?.x, lastX < 10000 {
+        segs.append(PlaybackSegment(
+            startX: lastX, endX: 10000, point: nil,
+            sweepMs: playbackSweepMs * (Double(10000 - lastX) / 10000.0),
+            pauseSeconds: 0))
+    }
+    return segs
+}
+
+// Drive an async playback loop over the given segments. The caller passes
+// closures that mutate its own `playX` / `highlightedPoint` @State. When
+// loop is true the full sequence repeats until the task is cancelled.
+@MainActor
+func runPlayback(
+    segments: [PlaybackSegment],
+    fps: Double,
+    loop: Bool,
+    setPlayX: @escaping (Int?) -> Void,
+    setHighlight: @escaping (PointHighlight?) -> Void
+) async {
+    let frameDuration = 1.0 / fps
+    let loopPause: Double = 1.5
+
+    repeat {
+        for seg in segments {
+            guard !Task.isCancelled else { return }
+            if seg.sweepMs > 0 {
+                let frames = max(1, Int(seg.sweepMs / 1000.0 * fps))
+                for f in 0...frames {
+                    guard !Task.isCancelled else { return }
+                    let t = Double(f) / Double(frames)
+                    setPlayX(seg.startX + Int(Double(seg.endX - seg.startX) * t))
+                    setHighlight(nil)
+                    try? await Task.sleep(for: .seconds(frameDuration))
+                }
+            }
+            guard !Task.isCancelled else { return }
+            if let pt = seg.point {
+                setPlayX(seg.endX)
+                setHighlight(PointHighlight(
+                    plotIndex: pt.plotIndex,
+                    pointIndex: pt.pointIndex,
+                    plotTitle: pt.plotTitle,
+                    label: pt.label,
+                    color: pt.color
+                ))
+                try? await Task.sleep(for: .seconds(seg.pauseSeconds))
+            }
+        }
+        if !loop { return }
+        guard !Task.isCancelled else { return }
+        // Brief reset before the next loop so the start is visible.
+        setPlayX(nil)
+        setHighlight(nil)
+        try? await Task.sleep(for: .seconds(loopPause))
+    } while !Task.isCancelled && loop
+}
+
 struct ChartView: View {
     let plots: [Plot]
     let chartPoints: [ChartPoint]
@@ -81,9 +211,7 @@ struct ChartView: View {
         var bestHL: PointHighlight? = nil
 
         for (idx, plot) in plots.enumerated() {
-            let pts = chartPoints
-                .filter { $0.plot_id == plot.id }
-                .sorted { $0.x_pos < $1.x_pos }
+            let pts = chartPoints.scenes(for: plot.id)
 
             for (pi, pt) in pts.enumerated() {
                 let pos = chartPosition(pt, in: chartSize)
@@ -128,9 +256,7 @@ struct ChartView: View {
 
     private func halo(size: CGSize, highlight: PointHighlight) -> some View {
         let plot = plots[highlight.plotIndex]
-        let pts = chartPoints
-            .filter { $0.plot_id == plot.id }
-            .sorted { $0.x_pos < $1.x_pos }
+        let pts = chartPoints.scenes(for: plot.id)
         guard highlight.pointIndex < pts.count else { return AnyView(EmptyView()) }
         let pos = chartPosition(pts[highlight.pointIndex], in: size)
         let color = highlight.color
@@ -178,43 +304,48 @@ struct ChartView: View {
     }
 
     func colorForPlot(_ plot: Plot, index: Int) -> Color {
-        return Self.plotColors[Self.resolvedColorIndex(plots: plots, at: index)]
+        Self.plotColors[Self.resolvedColorIndex(plots: plots, at: index)]
+    }
+
+    // Convenience: resolve by index into a [Plot] array.
+    static func resolvedColorIndex(plots: [Plot], at target: Int) -> Int {
+        resolveColorIndices(colors: plots.map { $0.color })[target]
     }
 
     // Resolve each plot's color index so no two plots share a color.
     // Explicit colors (>= 0) win in order; conflicts and unassigned plots
-    // get reassigned to the next free color.
-    static func resolvedColorIndex(plots: [Plot], at target: Int) -> Int {
+    // get reassigned to the next free color. Works from any sequence of
+    // optional color values, so iPhone, watch, and thumbnails can all
+    // share the same algorithm regardless of which Plot type they hold.
+    static func resolveColorIndices(colors: [Int?]) -> [Int] {
+        let n = plotColors.count
         var used = Set<Int>()
-        var assigned = Array(repeating: -1, count: plots.count)
+        var out = Array(repeating: -1, count: colors.count)
         var pending: [Int] = []
-        for (i, plot) in plots.enumerated() {
-            if let c = plot.color, c >= 0, c < plotColors.count, !used.contains(c) {
+        for (i, raw) in colors.enumerated() {
+            if let c = raw, c >= 0, c < n, !used.contains(c) {
                 used.insert(c)
-                assigned[i] = c
+                out[i] = c
             } else {
                 pending.append(i)
             }
         }
         for i in pending {
             var pick = -1
-            for k in 0..<plotColors.count where !used.contains(k) {
+            for k in 0..<n where !used.contains(k) {
                 pick = k
                 break
             }
-            if pick < 0 { pick = i % plotColors.count }
+            if pick < 0 { pick = i % n }
             used.insert(pick)
-            assigned[i] = pick
+            out[i] = pick
         }
-        return assigned[target]
+        return out
     }
 
     private func plotLines(size: CGSize) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
-            let points = chartPoints
-                .filter { $0.plot_id == plot.id }
-                .sorted { $0.x_pos < $1.x_pos }
-
+            let points = chartPoints.scenes(for: plot.id)
             if points.count > 1 {
                 Path { path in
                     for (i, pt) in points.enumerated() {
@@ -230,10 +361,7 @@ struct ChartView: View {
 
     private func plotDots(size: CGSize) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
-            let points = chartPoints
-                .filter { $0.plot_id == plot.id }
-                .sorted { $0.x_pos < $1.x_pos }
-
+            let points = chartPoints.scenes(for: plot.id)
             ForEach(Array(points.enumerated()), id: \.element.id) { pi, pt in
                 let pos = chartPosition(pt, in: size)
                 let isHighlighted = highlightedPoint?.plotIndex == idx && highlightedPoint?.pointIndex == pi
@@ -325,20 +453,14 @@ struct ChartThumbnailView: View {
     let plots: [StoryListPlot]
 
     private static let goldenRatio: CGFloat = 1.618
-    private let plotColors: [Color] = [
-        Color(red: 0.29, green: 0.50, blue: 0.83),
-        Color(red: 0.88, green: 0.38, blue: 0.25),
-        Color(red: 0.31, green: 0.63, blue: 0.25),
-        Color(red: 0.83, green: 0.63, blue: 0.13),
-        Color(red: 0.56, green: 0.38, blue: 0.75),
-        Color(red: 0.16, green: 0.62, blue: 0.56),
-        Color(red: 0.88, green: 0.44, blue: 0.60),
-        Color(red: 0.54, green: 0.40, blue: 0.25),
-        Color(red: 0.31, green: 0.31, blue: 0.69),
-        Color(red: 0.88, green: 0.50, blue: 0.31),
-    ]
     private let gridCount = 20
     private let inset: CGFloat = 0.05
+
+    // Pre-resolved once per render so we don't re-run the resolver for
+    // every plot/dot call.
+    private var colorIndices: [Int] {
+        ChartView.resolveColorIndices(colors: plots.map { $0.color })
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -356,29 +478,8 @@ struct ChartThumbnailView: View {
         .aspectRatio(Self.goldenRatio, contentMode: .fit)
     }
 
-    private func colorForPlot(_ plot: StoryListPlot, index: Int) -> Color {
-        var used = Set<Int>()
-        var assigned = Array(repeating: -1, count: plots.count)
-        var pending: [Int] = []
-        for (i, p) in plots.enumerated() {
-            if let c = p.color, c >= 0, c < plotColors.count, !used.contains(c) {
-                used.insert(c)
-                assigned[i] = c
-            } else {
-                pending.append(i)
-            }
-        }
-        for i in pending {
-            var pick = -1
-            for k in 0..<plotColors.count where !used.contains(k) {
-                pick = k
-                break
-            }
-            if pick < 0 { pick = i % plotColors.count }
-            used.insert(pick)
-            assigned[i] = pick
-        }
-        return plotColors[assigned[index]]
+    private func color(at index: Int) -> Color {
+        ChartView.plotColors[colorIndices[index]]
     }
 
     private func thumbnailGrid(width: CGFloat, height: CGFloat) -> some View {
@@ -426,7 +527,7 @@ struct ChartThumbnailView: View {
                         else { path.addLine(to: p) }
                     }
                 }
-                .stroke(colorForPlot(plot, index: idx), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                .stroke(color(at: idx), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
             }
         }
     }
@@ -435,7 +536,7 @@ struct ChartThumbnailView: View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             ForEach(Array(plot.points.enumerated()), id: \.offset) { _, pt in
                 Circle()
-                    .fill(colorForPlot(plot, index: idx))
+                    .fill(color(at: idx))
                     .frame(width: 8, height: 8)
                     .position(thumbPosition(pt, width: width, height: height))
             }

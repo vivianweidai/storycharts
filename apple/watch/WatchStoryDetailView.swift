@@ -18,7 +18,6 @@ struct WatchStoryDetailView: View {
                 ProgressView()
             } else if let detail = detail {
                 GeometryReader { geo in
-                ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 8) {
                             // Chart — fills the full visible viewport so it
@@ -33,63 +32,36 @@ struct WatchStoryDetailView: View {
                             )
                             .frame(height: geo.size.height)
 
-                            // Scene list grouped by plot
-                            ForEach(Array(detail.plots.enumerated()), id: \.element.id) { idx, plot in
-                                let scenes = detail.chartPoints
-                                    .filter { $0.plot_id == plot.id }
-                                    .sorted { $0.x_pos < $1.x_pos }
-
-                                if !scenes.isEmpty {
-                                    let plotColor = ChartView.plotColors[plotColorIndex(plot, index: idx)]
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        // Plot header
-                                        HStack(spacing: 6) {
-                                            Circle()
-                                                .fill(plotColor)
-                                                .frame(width: 8, height: 8)
-                                            Text(plot.title)
-                                                .font(.caption2.weight(.semibold))
-                                                .foregroundStyle(plotColor)
-                                        }
-
-                                        // Scene rows
-                                        ForEach(Array(scenes.enumerated()), id: \.element.id) { sceneIdx, scene in
-                                            let isActive = highlightedPoint?.plotIndex == idx
-                                                && highlightedPoint?.pointIndex == sceneIdx
-                                            NavigationLink(destination: WatchSceneListView(detail: detail)) {
-                                                Text(scene.label.isEmpty ? "—" : scene.label)
-                                                    .font(.caption2)
-                                                    .fontWeight(isActive ? .bold : .regular)
-                                                    .foregroundStyle(isActive ? plotColor : .primary)
-                                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                                    .padding(.vertical, 2)
-                                                    .padding(.horizontal, 4)
-                                                    .background(
-                                                        RoundedRectangle(cornerRadius: 4)
-                                                            .fill(plotColor.opacity(isActive ? 0.18 : 0))
-                                                    )
-                                            }
-                                            .id(scene.id)
-                                        }
+                            // Scenes in timeline order (sorted by x_pos),
+                            // not grouped by plot. Each row shows the plot's
+                            // color dot + the scene label. The row for the
+                            // currently-animated scene is highlighted.
+                            let timeline = timelineScenes(detail: detail)
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(timeline, id: \.scene.id) { item in
+                                    let isActive = highlightedPoint?.plotIndex == item.plotIndex
+                                        && highlightedPoint?.pointIndex == item.pointIndexInPlot
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(item.color)
+                                            .frame(width: 6, height: 6)
+                                        Text(item.scene.label.isEmpty ? "—" : item.scene.label)
+                                            .font(.caption2)
+                                            .fontWeight(isActive ? .bold : .regular)
+                                            .foregroundStyle(isActive ? item.color : .primary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
                                     }
-                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 3)
+                                    .padding(.horizontal, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(item.color.opacity(isActive ? 0.2 : 0))
+                                    )
                                 }
                             }
+                            .padding(.horizontal, 4)
                         }
                     }
-                    .onChange(of: highlightedPoint) { _, newValue in
-                        guard let hl = newValue,
-                              hl.plotIndex < detail.plots.count else { return }
-                        let scenes = detail.chartPoints
-                            .filter { $0.plot_id == detail.plots[hl.plotIndex].id }
-                            .sorted { $0.x_pos < $1.x_pos }
-                        guard hl.pointIndex < scenes.count else { return }
-                        let targetId = scenes[hl.pointIndex].id
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(targetId, anchor: .center)
-                        }
-                    }
-                }
                 }
             } else {
                 Text("Failed to load")
@@ -116,6 +88,33 @@ struct WatchStoryDetailView: View {
     private func plotColorIndex(_ plot: Plot, index: Int) -> Int {
         guard let plots = detail?.plots else { return index % ChartView.plotColors.count }
         return ChartView.resolvedColorIndex(plots: plots, at: index)
+    }
+
+    // MARK: - Timeline scene list
+
+    private struct TimelineItem {
+        let scene: ChartPoint
+        let plotIndex: Int
+        let pointIndexInPlot: Int
+        let color: Color
+    }
+
+    // Flat list of all scenes sorted by x_pos (timeline order), each tagged
+    // with the plot index and its index *within that plot's scene list* so
+    // it can be matched against the playback highlightedPoint.
+    private func timelineScenes(detail: StoryDetail) -> [TimelineItem] {
+        var items: [TimelineItem] = []
+        for (pIdx, plot) in detail.plots.enumerated() {
+            let sortedInPlot = detail.chartPoints
+                .filter { $0.plot_id == plot.id }
+                .sorted { $0.x_pos < $1.x_pos }
+            let color = ChartView.plotColors[plotColorIndex(plot, index: pIdx)]
+            for (sIdx, scene) in sortedInPlot.enumerated() {
+                items.append(TimelineItem(scene: scene, plotIndex: pIdx, pointIndexInPlot: sIdx, color: color))
+            }
+        }
+        items.sort { $0.scene.x_pos < $1.scene.x_pos }
+        return items
     }
 
     // MARK: - Playback

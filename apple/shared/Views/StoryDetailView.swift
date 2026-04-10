@@ -457,9 +457,8 @@ struct StoryDetailView: View {
             let resp = try await APIClient.shared.createPlot(storyId: storyId, title: name, color: color)
             // Add 3 random initial scenes, matching webapp behavior
             var pts = chartPoints.map { ChartPointPayload(plot_id: $0.plot_id, x_pos: $0.x_pos, y_val: $0.y_val, label: $0.label) }
-            let sceneLabels = ["New scene", "Rising action", "Turning point"]
-            for i in 0..<3 {
-                pts.append(ChartPointPayload(plot_id: resp.id, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: sceneLabels[i]))
+            for _ in 0..<3 {
+                pts.append(ChartPointPayload(plot_id: resp.id, x_pos: Int.random(in: 0...10000), y_val: Int.random(in: 0...10000), label: "New scene"))
             }
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()

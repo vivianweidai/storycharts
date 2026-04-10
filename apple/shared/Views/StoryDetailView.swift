@@ -91,7 +91,7 @@ struct StoryDetailView: View {
                 ToolbarItem(placement: .primaryAction) {
                     if detail.isOwner ?? false {
                         Menu {
-                            Button("Edit Story Name", systemImage: "pencil") {
+                            Button("Change Title", systemImage: "pencil") {
                                 editTitleText = detail.story.title
                                 isEditingTitle = true
                             }

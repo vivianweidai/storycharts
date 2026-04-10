@@ -20,7 +20,8 @@ struct WatchStoryDetailView: View {
                 GeometryReader { geo in
                     ScrollView {
                         VStack(spacing: 8) {
-                            // Chart — fills the full visible viewport so it
+                            // Chart — fills the full visible viewport
+                            // (width + height of the watch screen) so it
                             // acts as a "full screen" top section; scenes list
                             // appears below when the user scrolls.
                             ChartView(
@@ -30,7 +31,7 @@ struct WatchStoryDetailView: View {
                                 playX: playX,
                                 highlightedPoint: highlightedPoint
                             )
-                            .frame(height: geo.size.height)
+                            .frame(width: geo.size.width, height: geo.size.height)
 
                             // Scenes in timeline order (sorted by x_pos),
                             // not grouped by plot. Each row shows the plot's

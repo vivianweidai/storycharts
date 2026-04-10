@@ -42,40 +42,40 @@ struct ChartView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
+            let s = geo.size
             ZStack {
-                gridBackground(size: size)
-                midline(size: size)
+                gridBackground(size: s)
+                midline(size: s)
                 if let px = playX {
-                    sweepLine(size: size, x: px)
+                    sweepLine(size: s, x: px)
                 }
                 if let hl = highlightedPoint {
-                    halo(size: size, highlight: hl)
+                    halo(size: s, highlight: hl)
                 }
                 if isDragging, let sx = snappedX {
-                    snapGuide(size: size, x: sx)
+                    snapGuide(size: s, x: sx)
                 }
-                plotLines(size: size)
-                plotDots(size: size)
+                plotLines(size: s)
+                plotDots(size: s)
             }
-            .frame(width: size, height: size)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(width: s.width, height: s.height)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isEditable ? Color.blue.opacity(0.5) : Color(red: 0.55, green: 0.7, blue: 0.75).opacity(0.5), lineWidth: 1.5)
-                    .frame(width: size, height: size)
             )
             .coordinateSpace(name: "chart")
             .contentShape(Rectangle())
             .onTapGesture { location in
                 guard !isDragging else { return }
-                handleTap(at: location, chartSize: size)
+                handleTap(at: location, chartSize: s)
             }
         }
-        .aspectRatio(1, contentMode: .fit)
+        // Callers apply .aspectRatio(1, contentMode: .fit) when they want
+        // a square chart (iPhone editor). Watch leaves it unconstrained
+        // so the chart can fill a non-square viewport.
     }
 
-    private func handleTap(at location: CGPoint, chartSize: CGFloat) {
+    private func handleTap(at location: CGPoint, chartSize: CGSize) {
         let hitRadius: CGFloat = 30
         var bestDist: CGFloat = hitRadius
         var bestHL: PointHighlight? = nil
@@ -103,29 +103,30 @@ struct ChartView: View {
         onPointTapped?(bestHL)
     }
 
-    private func sweepLine(size: CGFloat, x: Int) -> some View {
-        let pad = size * inset
-        let inner = size - 2 * pad
-        let px = pad + CGFloat(x) / 10000.0 * inner
+    private func sweepLine(size: CGSize, x: Int) -> some View {
+        let padX = size.width * inset
+        let innerW = size.width - 2 * padX
+        let px = padX + CGFloat(x) / 10000.0 * innerW
         return Path { path in
             path.move(to: CGPoint(x: px, y: 0))
-            path.addLine(to: CGPoint(x: px, y: size))
+            path.addLine(to: CGPoint(x: px, y: size.height))
         }
         .stroke(Color.blue.opacity(0.35), lineWidth: 1)
     }
 
-    private func snapGuide(size: CGFloat, x: Int) -> some View {
-        let pad = size * inset
-        let inner = size - 2 * pad
-        let px = pad + CGFloat(x) / 10000.0 * inner
+    private func snapGuide(size: CGSize, x: Int) -> some View {
+        let padX = size.width * inset
+        let padY = size.height * inset
+        let innerW = size.width - 2 * padX
+        let px = padX + CGFloat(x) / 10000.0 * innerW
         return Path { path in
-            path.move(to: CGPoint(x: px, y: pad))
-            path.addLine(to: CGPoint(x: px, y: size - pad))
+            path.move(to: CGPoint(x: px, y: padY))
+            path.addLine(to: CGPoint(x: px, y: size.height - padY))
         }
         .stroke(Color(red: 0.04, green: 0.41, blue: 0.85).opacity(0.35), lineWidth: 1)
     }
 
-    private func halo(size: CGFloat, highlight: PointHighlight) -> some View {
+    private func halo(size: CGSize, highlight: PointHighlight) -> some View {
         let plot = plots[highlight.plotIndex]
         let pts = chartPoints
             .filter { $0.plot_id == plot.id }
@@ -142,34 +143,36 @@ struct ChartView: View {
         )
     }
 
-    private func gridBackground(size: CGFloat) -> some View {
+    private func gridBackground(size: CGSize) -> some View {
         Canvas { ctx, _ in
-            let step = size / CGFloat(gridCount)
+            let hStep = size.width / CGFloat(gridCount)
+            let vStep = size.height / CGFloat(gridCount)
             let gridColor = Color(red: 0.85, green: 0.9, blue: 0.95)
             for i in 0...gridCount {
-                let pos = CGFloat(i) * step
+                let y = CGFloat(i) * vStep
                 var hPath = Path()
-                hPath.move(to: CGPoint(x: 0, y: pos))
-                hPath.addLine(to: CGPoint(x: size, y: pos))
+                hPath.move(to: CGPoint(x: 0, y: y))
+                hPath.addLine(to: CGPoint(x: size.width, y: y))
                 ctx.stroke(hPath, with: .color(gridColor), lineWidth: 0.5)
+                let x = CGFloat(i) * hStep
                 var vPath = Path()
-                vPath.move(to: CGPoint(x: pos, y: 0))
-                vPath.addLine(to: CGPoint(x: pos, y: size))
+                vPath.move(to: CGPoint(x: x, y: 0))
+                vPath.addLine(to: CGPoint(x: x, y: size.height))
                 ctx.stroke(vPath, with: .color(gridColor), lineWidth: 0.5)
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: size.width, height: size.height)
         .background(Color(red: 0.97, green: 0.98, blue: 1.0))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private func midline(size: CGFloat) -> some View {
-        let pad = size * inset
-        let inner = size - 2 * pad
-        let midY = pad + inner / 2
+    private func midline(size: CGSize) -> some View {
+        let padY = size.height * inset
+        let innerH = size.height - 2 * padY
+        let midY = padY + innerH / 2
         return Path { path in
             path.move(to: CGPoint(x: 0, y: midY))
-            path.addLine(to: CGPoint(x: size, y: midY))
+            path.addLine(to: CGPoint(x: size.width, y: midY))
         }
         .stroke(Color.gray.opacity(0.5), lineWidth: 1)
     }
@@ -206,7 +209,7 @@ struct ChartView: View {
         return assigned[target]
     }
 
-    private func plotLines(size: CGFloat) -> some View {
+    private func plotLines(size: CGSize) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             let points = chartPoints
                 .filter { $0.plot_id == plot.id }
@@ -225,7 +228,7 @@ struct ChartView: View {
         }
     }
 
-    private func plotDots(size: CGFloat) -> some View {
+    private func plotDots(size: CGSize) -> some View {
         ForEach(Array(plots.enumerated()), id: \.element.id) { idx, plot in
             let points = chartPoints
                 .filter { $0.plot_id == plot.id }
@@ -247,7 +250,7 @@ struct ChartView: View {
         }
     }
 
-    private func dragGesture(for point: ChartPoint, plotIndex: Int, pointIndex: Int, plot: Plot, chartSize: CGFloat) -> some Gesture {
+    private func dragGesture(for point: ChartPoint, plotIndex: Int, pointIndex: Int, plot: Plot, chartSize: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 5, coordinateSpace: .named("chart"))
             .onChanged { value in
                 if !isDragging {
@@ -277,14 +280,14 @@ struct ChartView: View {
     // Snap the raw x (0-10000) to any other scene's x within snapThresholdPx
     // pixel distance. Mirrors the webapp's SNAP_PX=12 behavior, with a
     // slightly larger threshold to suit touch input.
-    private func snapXToNeighbor(rawX: Int, excludeId: Int, chartSize: CGFloat) -> Int {
-        let pad = chartSize * inset
-        let inner = chartSize - 2 * pad
-        let rawPx = pad + CGFloat(rawX) / 10000.0 * inner
+    private func snapXToNeighbor(rawX: Int, excludeId: Int, chartSize: CGSize) -> Int {
+        let padX = chartSize.width * inset
+        let innerW = chartSize.width - 2 * padX
+        let rawPx = padX + CGFloat(rawX) / 10000.0 * innerW
         var bestDist = snapThresholdPx + 1
         var bestX = rawX
         for pt in chartPoints where pt.id != excludeId {
-            let px = pad + CGFloat(pt.x_pos) / 10000.0 * inner
+            let px = padX + CGFloat(pt.x_pos) / 10000.0 * innerW
             let d = abs(px - rawPx)
             if d < bestDist {
                 bestDist = d
@@ -294,20 +297,24 @@ struct ChartView: View {
         return bestX
     }
 
-    private func chartPosition(_ point: ChartPoint, in size: CGFloat) -> CGPoint {
-        let pad = size * inset
-        let inner = size - 2 * pad
+    private func chartPosition(_ point: ChartPoint, in size: CGSize) -> CGPoint {
+        let padX = size.width * inset
+        let padY = size.height * inset
+        let innerW = size.width - 2 * padX
+        let innerH = size.height - 2 * padY
         return CGPoint(
-            x: pad + CGFloat(point.x_pos) / 10000.0 * inner,
-            y: pad + (1.0 - CGFloat(point.y_val) / 10000.0) * inner
+            x: padX + CGFloat(point.x_pos) / 10000.0 * innerW,
+            y: padY + (1.0 - CGFloat(point.y_val) / 10000.0) * innerH
         )
     }
 
-    private func normalizedFromPixel(_ location: CGPoint, chartSize: CGFloat) -> (x: Int, y: Int) {
-        let pad = chartSize * inset
-        let inner = chartSize - 2 * pad
-        let nx = Int(max(0, min(10000, (location.x - pad) / inner * 10000)))
-        let ny = Int(max(0, min(10000, (1.0 - (location.y - pad) / inner) * 10000)))
+    private func normalizedFromPixel(_ location: CGPoint, chartSize: CGSize) -> (x: Int, y: Int) {
+        let padX = chartSize.width * inset
+        let padY = chartSize.height * inset
+        let innerW = chartSize.width - 2 * padX
+        let innerH = chartSize.height - 2 * padY
+        let nx = Int(max(0, min(10000, (location.x - padX) / innerW * 10000)))
+        let ny = Int(max(0, min(10000, (1.0 - (location.y - padY) / innerH) * 10000)))
         return (nx, ny)
     }
 }

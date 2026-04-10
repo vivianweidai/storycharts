@@ -72,6 +72,7 @@ struct StoryDetailView: View {
                             }
                         }
                     )
+                    .aspectRatio(1, contentMode: .fit)
                     .padding()
 
                     // Info / edit panel

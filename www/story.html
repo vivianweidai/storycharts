@@ -544,7 +544,7 @@
     api('POST', 'stories/' + storyId + '/plots', { title: name, color: ci }).then(function(r) {
       plots.push({ id: r.id, title: name, color: ci });
       for (var i = 0; i < 3; i++) {
-        points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' });
+        points.push({ plot_id: r.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New scene' });
       }
       savePoints(); draw(); updateInfo(); updateAddPlotBtn();
     });
@@ -554,7 +554,7 @@
     if (points.length >= MAX_SCENES) { alert('Maximum ' + MAX_SCENES + ' scenes per story. Delete some to make room.'); return; }
     savePendingEdits(); editingDi = -1; editingPi = -1;
     var plot = plots[di];
-    var newPt = { plot_id: plot.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New point' };
+    var newPt = { plot_id: plot.id, x: Math.floor(Math.random() * 10001), y: Math.floor(Math.random() * 10001), label: 'New scene' };
     points.push(newPt);
     if (autoSelect) {
       var g = grouped();

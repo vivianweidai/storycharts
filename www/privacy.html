@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Story Charts</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    main { padding-top: 8px; }
+    main h1 { font-size: 1.6em; margin-bottom: 0.2em; }
+    main .updated { color: #656d76; font-size: 0.85em; margin-bottom: 1.5em; }
+    main h2 { font-size: 1.1em; margin-top: 1.8em; margin-bottom: 0.5em; }
+    main p, main ul { margin-bottom: 0.8em; }
+    main ul { padding-left: 1.4em; }
+    main li { margin-bottom: 0.3em; }
+  </style>
+</head>
+<body>
+  <div class="header" id="header"></div>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: April 10, 2026</p>
+
+    <p>Story Charts is a hobby project that lets writers visualize story structure as charts. This policy describes what information the service collects, how it is used, and your rights over it. It applies to the website at storycharts.com and the Story Charts apps for iPhone, iPad, and Apple Watch.</p>
+
+    <h2>Who runs Story Charts</h2>
+    <p>Story Charts is operated by James Dai Limited (the "service"). Contact: <a href="mailto:privacy@storycharts.com">privacy@storycharts.com</a>.</p>
+
+    <h2>What we collect</h2>
+    <p>We collect only the information needed to let you sign in and save your charts:</p>
+    <ul>
+      <li><strong>Account identifier.</strong> When you sign in, our authentication provider (Cloudflare Access) gives the service your email address. We use it solely as the owner identifier for the stories you create.</li>
+      <li><strong>Your story content.</strong> Stories, plots, and scene positions that you create in the app are stored on our servers so you can access them from any device.</li>
+      <li><strong>Basic request logs.</strong> Like most web services, our hosting provider (Cloudflare) records standard request metadata such as IP address, user agent, and timestamp for security and abuse prevention. We do not use this data for analytics or advertising.</li>
+    </ul>
+    <p>We do <strong>not</strong> collect location, contacts, photos, health data, microphone audio, or any device identifiers beyond what is inherent to a standard web request. We do not use tracking cookies or third-party analytics. We do not show ads.</p>
+
+    <h2>How your content is used</h2>
+    <p>Your stories are private to your account. Other users cannot see them. We do not read, analyze, train on, or share your story content. The only automated processing is storing and returning it when you ask for it.</p>
+
+    <h2>Where your data is stored</h2>
+    <p>Data is stored using Cloudflare D1 (a managed SQLite database) and Cloudflare Pages. Cloudflare acts as our infrastructure provider and processes data on our behalf. See Cloudflare's privacy policy at <a href="https://www.cloudflare.com/privacypolicy/">cloudflare.com/privacypolicy</a> for details on how they handle data as a processor.</p>
+
+    <h2>How long we keep it</h2>
+    <p>We keep your stories for as long as your account exists. If you delete a story, it is removed from our database. If you want your entire account and all associated content deleted, email us at the address above and we will do so within 30 days.</p>
+
+    <h2>Sharing</h2>
+    <p>We do not sell or share your personal information with third parties for their own purposes. We may disclose information if required to do so by law.</p>
+
+    <h2>Children</h2>
+    <p>Story Charts is not directed at children under 13 and does not knowingly collect information from them.</p>
+
+    <h2>Your rights</h2>
+    <p>You can request a copy of the data we hold about you, or ask us to correct or delete it, by emailing <a href="mailto:privacy@storycharts.com">privacy@storycharts.com</a>. Depending on where you live (for example, under GDPR or CCPA) you may have additional rights; we will honor them regardless of your location.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If we make material changes to this policy we will update the date at the top of this page and, where appropriate, notify you in the app.</p>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    (async function() {
+      var user = await getUser();
+      renderHeader(user);
+    })();
+  </script>
+</body>
+</html>

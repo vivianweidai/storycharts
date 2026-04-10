@@ -15,6 +15,7 @@
 		A100000006 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000014; };
 		A100000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000002; };
 		A100000008 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000015; };
+		A100000009 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016; };
 		A200000001 /* StoryChartsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001; };
 		A200000002 /* WatchStoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000002; };
 		A200000003 /* WatchStoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000003; };
@@ -22,6 +23,7 @@
 		A200000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011; };
 		A200000006 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012; };
 		A200000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B200000004; };
+		A200000008 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +35,7 @@
 		B100000013 /* StoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryListView.swift; sourceTree = "<group>"; };
 		B100000014 /* StoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryDetailView.swift; sourceTree = "<group>"; };
 		B100000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		B100000016 /* BlockedUsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsers.swift; sourceTree = "<group>"; };
 		B200000001 /* StoryChartsWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryChartsWatchApp.swift; sourceTree = "<group>"; };
 		B200000002 /* WatchStoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryListView.swift; sourceTree = "<group>"; };
 		B200000003 /* WatchStoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryDetailView.swift; sourceTree = "<group>"; };
@@ -75,6 +78,7 @@
 			children = (
 				B100000011 /* APIClient.swift */,
 				B100000015 /* AuthManager.swift */,
+				B100000016 /* BlockedUsers.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -202,6 +206,7 @@
 				A100000005,
 				A100000006,
 				A100000008,
+				A100000009,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,6 +220,7 @@
 				A200000004,
 				A200000005,
 				A200000006,
+				A200000008,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

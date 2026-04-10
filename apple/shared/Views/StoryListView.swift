@@ -2,10 +2,15 @@ import SwiftUI
 
 struct StoryListView: View {
     @EnvironmentObject var auth: AuthManager
+    @ObservedObject private var blocked = BlockedUsers.shared
     @State private var stories: [StoryListItem] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var createdStoryId: Int?
+
+    private var visibleStories: [StoryListItem] {
+        stories.filter { !blocked.isBlocked($0.userid) }
+    }
 
     var body: some View {
         Group {
@@ -13,12 +18,12 @@ struct StoryListView: View {
                 ProgressView("Loading stories...")
             } else if let error = errorMessage {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle", description: Text(error))
-            } else if stories.isEmpty {
+            } else if visibleStories.isEmpty {
                 ContentUnavailableView("No Stories", systemImage: "book", description: Text("No stories yet."))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        ForEach(stories) { story in
+                        ForEach(visibleStories) { story in
                             NavigationLink(destination: StoryDetailView(storyId: story.id)) {
                                 storyCard(story)
                             }

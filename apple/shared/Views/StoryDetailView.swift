@@ -21,7 +21,11 @@ struct StoryDetailView: View {
     @State private var editPlotName = ""
     @State private var editSceneLabel = ""
 
+    // UGC safety state (non-owner actions)
+    @State private var showBlockConfirm = false
+
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         Group {
@@ -111,11 +115,21 @@ struct StoryDetailView: View {
                             Image(systemName: "ellipsis.circle")
                         }
                     } else {
-                        Button {
-                            if isPlaying { stopPlayback() }
-                            else { startPlayback() }
+                        Menu {
+                            Button(isPlaying ? "Pause" : "Play",
+                                   systemImage: isPlaying ? "pause.fill" : "play.fill") {
+                                if isPlaying { stopPlayback() }
+                                else { startPlayback() }
+                            }
+                            Divider()
+                            Button("Report this story", systemImage: "flag") {
+                                reportStory(detail: detail)
+                            }
+                            Button("Block this user", systemImage: "hand.raised", role: .destructive) {
+                                showBlockConfirm = true
+                            }
                         } label: {
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            Image(systemName: "ellipsis.circle")
                         }
                     }
                 }
@@ -125,6 +139,17 @@ struct StoryDetailView: View {
             TextField("Title", text: $editTitleText)
             Button("OK") { saveTitle() }
             Button("Cancel", role: .cancel) { }
+        }
+        .alert("Block this user?", isPresented: $showBlockConfirm) {
+            Button("Block", role: .destructive) {
+                if let userid = detail?.story.userid {
+                    BlockedUsers.shared.block(userid)
+                }
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Stories from this user will be hidden from your list on this device.")
         }
         .task {
             await loadStory()
@@ -401,6 +426,29 @@ struct StoryDetailView: View {
             try await APIClient.shared.saveChartPoints(storyId: storyId, points: pts)
             await reloadStory()
         } catch {}
+    }
+
+    // MARK: - UGC safety (non-owner actions)
+
+    private func reportStory(detail: StoryDetail) {
+        let id = detail.story.id
+        let subject = "Report StoryCharts story #\(id)"
+        let body = """
+        I'd like to report this story: https://storycharts.com/story.html?id=\(id)
+
+        Reason:
+
+        """
+        var comps = URLComponents()
+        comps.scheme = "mailto"
+        comps.path = "privacy@storycharts.com"
+        comps.queryItems = [
+            URLQueryItem(name: "subject", value: subject),
+            URLQueryItem(name: "body", value: body)
+        ]
+        if let url = comps.url {
+            openURL(url)
+        }
     }
 
     private func deleteStory() async {

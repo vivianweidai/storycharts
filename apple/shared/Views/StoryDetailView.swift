@@ -253,7 +253,15 @@ struct StoryDetailView: View {
             color: highlight.color
         )
         Task {
-            try? await APIClient.shared.updatePlot(plot.id, title: trimmed, color: plot.color ?? -1)
+            // Preserve the plot's color on rename; if somehow still unassigned,
+            // resolve to the next free index so we never write -1 back.
+            let colorToSave: Int
+            if let c = plot.color, c >= 0 {
+                colorToSave = c
+            } else {
+                colorToSave = ChartView.resolvedColorIndex(plots: detail.plots, at: highlight.plotIndex)
+            }
+            try? await APIClient.shared.updatePlot(plot.id, title: trimmed, color: colorToSave)
         }
     }
 
@@ -506,6 +514,7 @@ struct StoryDetailView: View {
             let d = try await APIClient.shared.getStory(storyId)
             detail = d
             chartPoints = d.chartPoints
+            await lockInPlotColors()
         } catch {}
     }
 
@@ -515,8 +524,29 @@ struct StoryDetailView: View {
             detail = d
             chartPoints = d.chartPoints
             isLoading = false
+            await lockInPlotColors()
         } catch {
             isLoading = false
         }
+    }
+
+    // Persist an explicit color for any plot that still has nil/-1, so that
+    // colors are stable across future renders and deletions. Runs after every
+    // load; a no-op when all plots already have explicit colors.
+    private func lockInPlotColors() async {
+        guard var current = detail else { return }
+        guard current.plots.contains(where: { ($0.color ?? -1) < 0 }) else { return }
+        guard current.isOwner ?? false else { return }
+        for i in 0..<current.plots.count {
+            let plot = current.plots[i]
+            if (plot.color ?? -1) < 0 {
+                let resolved = ChartView.resolvedColorIndex(plots: current.plots, at: i)
+                do {
+                    try await APIClient.shared.updatePlot(plot.id, title: plot.title, color: resolved)
+                    current.plots[i].color = resolved
+                } catch {}
+            }
+        }
+        detail = current
     }
 }

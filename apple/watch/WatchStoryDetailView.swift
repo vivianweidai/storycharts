@@ -79,7 +79,6 @@ struct WatchStoryDetailView: View {
                     }
                     .onChange(of: highlightedPoint) { _, newValue in
                         guard let hl = newValue,
-                              let detail = detail,
                               hl.plotIndex < detail.plots.count else { return }
                         let scenes = detail.chartPoints
                             .filter { $0.plot_id == detail.plots[hl.plotIndex].id }

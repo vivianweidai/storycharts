@@ -46,17 +46,19 @@ struct WatchStoryDetailView: View {
                                         Circle()
                                             .fill(item.color)
                                             .frame(width: 6, height: 6)
+                                        // Keep font, weight, and color stable
+                                        // across active/inactive so the row's
+                                        // text metrics never change — only the
+                                        // background box tints to highlight.
                                         Text(item.scene.label.isEmpty ? "—" : item.scene.label)
                                             .font(.caption2)
-                                            .fontWeight(isActive ? .bold : .regular)
-                                            .foregroundStyle(isActive ? item.color : .primary)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     .padding(.vertical, 3)
                                     .padding(.horizontal, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 4)
-                                            .fill(item.color.opacity(isActive ? 0.2 : 0))
+                                            .fill(item.color.opacity(isActive ? 0.22 : 0))
                                     )
                                 }
                             }

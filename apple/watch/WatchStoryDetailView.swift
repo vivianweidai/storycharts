@@ -17,10 +17,13 @@ struct WatchStoryDetailView: View {
             if isLoading {
                 ProgressView()
             } else if let detail = detail {
+                GeometryReader { geo in
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 8) {
-                            // Chart — full width, auto-plays
+                            // Chart — fills the full visible viewport so it
+                            // acts as a "full screen" top section; scenes list
+                            // appears below when the user scrolls.
                             ChartView(
                                 plots: detail.plots,
                                 chartPoints: detail.chartPoints,
@@ -28,6 +31,7 @@ struct WatchStoryDetailView: View {
                                 playX: playX,
                                 highlightedPoint: highlightedPoint
                             )
+                            .frame(height: geo.size.height)
 
                             // Scene list grouped by plot
                             ForEach(Array(detail.plots.enumerated()), id: \.element.id) { idx, plot in
@@ -86,6 +90,7 @@ struct WatchStoryDetailView: View {
                             proxy.scrollTo(targetId, anchor: .center)
                         }
                     }
+                }
                 }
             } else {
                 Text("Failed to load")
@@ -177,34 +182,45 @@ struct WatchStoryDetailView: View {
 
             let fps: Double = 30 // Lower FPS for watch performance
             let frameDuration = 1.0 / fps
+            let loopPause: Double = 1.5 // beat between loop iterations
 
-            for seg in segments {
-                guard !Task.isCancelled else { break }
+            // Loop the full sweep-and-highlight cycle until the task is
+            // cancelled (navigating away or stopPlayback).
+            while !Task.isCancelled {
+                for seg in segments {
+                    guard !Task.isCancelled else { break }
 
-                if seg.sweepDuration > 0 {
-                    let frames = max(1, Int(seg.sweepDuration / 1000.0 * fps))
-                    for f in 0...frames {
-                        guard !Task.isCancelled else { break }
-                        let t = Double(f) / Double(frames)
-                        playX = seg.startX + Int(Double(seg.endX - seg.startX) * t)
-                        highlightedPoint = nil
-                        try? await Task.sleep(for: .seconds(frameDuration))
+                    if seg.sweepDuration > 0 {
+                        let frames = max(1, Int(seg.sweepDuration / 1000.0 * fps))
+                        for f in 0...frames {
+                            guard !Task.isCancelled else { break }
+                            let t = Double(f) / Double(frames)
+                            playX = seg.startX + Int(Double(seg.endX - seg.startX) * t)
+                            highlightedPoint = nil
+                            try? await Task.sleep(for: .seconds(frameDuration))
+                        }
+                    }
+
+                    guard !Task.isCancelled else { break }
+
+                    if let pt = seg.point {
+                        playX = seg.endX
+                        highlightedPoint = PointHighlight(
+                            plotIndex: pt.plotIndex,
+                            pointIndex: pt.pointIndex,
+                            plotTitle: pt.plotTitle,
+                            label: pt.label,
+                            color: pt.color
+                        )
+                        try? await Task.sleep(for: .seconds(seg.pauseDuration))
                     }
                 }
 
                 guard !Task.isCancelled else { break }
-
-                if let pt = seg.point {
-                    playX = seg.endX
-                    highlightedPoint = PointHighlight(
-                        plotIndex: pt.plotIndex,
-                        pointIndex: pt.pointIndex,
-                        plotTitle: pt.plotTitle,
-                        label: pt.label,
-                        color: pt.color
-                    )
-                    try? await Task.sleep(for: .seconds(seg.pauseDuration))
-                }
+                // Brief reset before the next loop so the start is visible.
+                playX = nil
+                highlightedPoint = nil
+                try? await Task.sleep(for: .seconds(loopPause))
             }
 
             stopPlayback()

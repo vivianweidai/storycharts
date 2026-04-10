@@ -34,8 +34,7 @@ struct WatchSceneListView: View {
     private func allScenesSorted() -> [SceneRow] {
         var rows: [SceneRow] = []
         for (idx, plot) in detail.plots.enumerated() {
-            let ci = (plot.color != nil && plot.color! >= 0) ? plot.color! : idx
-            let color = ChartView.plotColors[ci % ChartView.plotColors.count]
+            let color = ChartView.plotColors[ChartView.resolvedColorIndex(plots: detail.plots, at: idx)]
             let pts = detail.chartPoints
                 .filter { $0.plot_id == plot.id }
                 .sorted { $0.x_pos < $1.x_pos }

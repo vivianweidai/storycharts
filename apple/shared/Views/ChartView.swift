@@ -159,8 +159,35 @@ struct ChartView: View {
     }
 
     func colorForPlot(_ plot: Plot, index: Int) -> Color {
-        let ci = (plot.color != nil && plot.color! >= 0) ? plot.color! : index
-        return Self.plotColors[ci % Self.plotColors.count]
+        return Self.plotColors[Self.resolvedColorIndex(plots: plots, at: index)]
+    }
+
+    // Resolve each plot's color index so no two plots share a color.
+    // Explicit colors (>= 0) win in order; conflicts and unassigned plots
+    // get reassigned to the next free color.
+    static func resolvedColorIndex(plots: [Plot], at target: Int) -> Int {
+        var used = Set<Int>()
+        var assigned = Array(repeating: -1, count: plots.count)
+        var pending: [Int] = []
+        for (i, plot) in plots.enumerated() {
+            if let c = plot.color, c >= 0, c < plotColors.count, !used.contains(c) {
+                used.insert(c)
+                assigned[i] = c
+            } else {
+                pending.append(i)
+            }
+        }
+        for i in pending {
+            var pick = -1
+            for k in 0..<plotColors.count where !used.contains(k) {
+                pick = k
+                break
+            }
+            if pick < 0 { pick = i % plotColors.count }
+            used.insert(pick)
+            assigned[i] = pick
+        }
+        return assigned[target]
     }
 
     private func plotLines(size: CGFloat) -> some View {
@@ -283,8 +310,28 @@ struct ChartThumbnailView: View {
     }
 
     private func colorForPlot(_ plot: StoryListPlot, index: Int) -> Color {
-        let ci = (plot.color != nil && plot.color! >= 0) ? plot.color! : index
-        return plotColors[ci % plotColors.count]
+        var used = Set<Int>()
+        var assigned = Array(repeating: -1, count: plots.count)
+        var pending: [Int] = []
+        for (i, p) in plots.enumerated() {
+            if let c = p.color, c >= 0, c < plotColors.count, !used.contains(c) {
+                used.insert(c)
+                assigned[i] = c
+            } else {
+                pending.append(i)
+            }
+        }
+        for i in pending {
+            var pick = -1
+            for k in 0..<plotColors.count where !used.contains(k) {
+                pick = k
+                break
+            }
+            if pick < 0 { pick = i % plotColors.count }
+            used.insert(pick)
+            assigned[i] = pick
+        }
+        return plotColors[assigned[index]]
     }
 
     private func thumbnailGrid(width: CGFloat, height: CGFloat) -> some View {

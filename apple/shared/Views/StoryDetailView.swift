@@ -76,7 +76,7 @@ struct StoryDetailView: View {
 
                     // Info / edit panel
                     infoPanel
-                        .frame(height: detail.isOwner ?? false ? 100 : 70)
+                        .frame(height: detail.isOwner ?? false ? 108 : 78)
                 }
             } else {
                 ContentUnavailableView("Not Found", systemImage: "questionmark", description: Text("Story could not be loaded."))
@@ -98,9 +98,11 @@ struct StoryDetailView: View {
                             Button("Add Plot", systemImage: "plus.square") {
                                 Task { await addPlot() }
                             }
+                            .disabled(detail.plots.count >= 10)
                             Button("Add Scene", systemImage: "plus.circle") {
                                 Task { await addScene() }
                             }
+                            .disabled(chartPoints.count >= 100 || detail.plots.isEmpty)
                             Button("Delete Story", systemImage: "trash", role: .destructive) {
                                 Task { await deleteStory() }
                             }
@@ -155,7 +157,7 @@ struct StoryDetailView: View {
 
     @ViewBuilder
     private func readOnlyInfoPanel(highlight: PointHighlight) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 12) {
             Text(highlight.plotTitle)
                 .font(.subheadline)
                 .fontWeight(.semibold)
@@ -171,7 +173,7 @@ struct StoryDetailView: View {
 
     @ViewBuilder
     private func editPanel(highlight: PointHighlight) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 14) {
             // Row 1: Plot name + delete plot
             HStack(spacing: 8) {
                 TextField("Plot name", text: $editPlotName)
@@ -435,10 +437,12 @@ struct StoryDetailView: View {
     }
 
     private func nextFreeColor(existingPlots: [Plot]) -> Int {
+        // Mirror the resolver in ChartView: compute the effective color
+        // each existing plot would be rendered with, then return the
+        // smallest color index not among them.
         var used = Set<Int>()
-        for (i, plot) in existingPlots.enumerated() {
-            let c = (plot.color != nil && plot.color! >= 0) ? plot.color! % ChartView.plotColors.count : i % ChartView.plotColors.count
-            used.insert(c)
+        for i in 0..<existingPlots.count {
+            used.insert(ChartView.resolvedColorIndex(plots: existingPlots, at: i))
         }
         for c in 0..<ChartView.plotColors.count {
             if !used.contains(c) { return c }

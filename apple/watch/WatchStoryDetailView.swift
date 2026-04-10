@@ -84,8 +84,8 @@ struct WatchStoryDetailView: View {
     }
 
     private func plotColorIndex(_ plot: Plot, index: Int) -> Int {
-        let ci = (plot.color != nil && plot.color! >= 0) ? plot.color! : index
-        return ci % ChartView.plotColors.count
+        guard let plots = detail?.plots else { return index % ChartView.plotColors.count }
+        return ChartView.resolvedColorIndex(plots: plots, at: index)
     }
 
     // MARK: - Playback

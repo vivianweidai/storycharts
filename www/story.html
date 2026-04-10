@@ -31,13 +31,44 @@
   var PLAY_PAUSE_MIN = 3000, PLAY_PAUSE_MAX = 6000; // pause range based on label length
   var PLAY_SWEEP_MS = 1500; // sweep between scenes
 
-  function plotColor(di) { var p = plots[di]; return COLORS[(p && p.color >= 0) ? p.color % COLORS.length : di % COLORS.length]; }
-  function nextFreeColor() {
+  // Resolve each plot's color index so no two plots ever share a color.
+  // Explicit colors (>= 0) win in order; conflicts and unassigned plots
+  // get reassigned to the next free color. Falls back to wrap only if
+  // plots outnumber COLORS (shouldn't happen, MAX_PLOTS <= COLORS.length).
+  function resolvedPlotColors() {
     var used = {};
+    var out = [];
+    var pending = [];
     for (var i = 0; i < plots.length; i++) {
-      var c = (plots[i].color >= 0) ? plots[i].color % COLORS.length : i % COLORS.length;
-      used[c] = true;
+      var c = plots[i].color;
+      if (c >= 0 && c < COLORS.length && !used[c]) {
+        used[c] = true;
+        out[i] = c;
+      } else {
+        out[i] = -1; // defer
+        pending.push(i);
+      }
     }
+    for (var p = 0; p < pending.length; p++) {
+      var i2 = pending[p];
+      var pick = -1;
+      for (var k = 0; k < COLORS.length; k++) {
+        if (!used[k]) { pick = k; break; }
+      }
+      if (pick < 0) pick = i2 % COLORS.length; // only if > COLORS.length plots
+      used[pick] = true;
+      out[i2] = pick;
+    }
+    return out;
+  }
+  function plotColor(di) {
+    var idxs = resolvedPlotColors();
+    return COLORS[idxs[di] != null ? idxs[di] : di % COLORS.length];
+  }
+  function nextFreeColor() {
+    var idxs = resolvedPlotColors();
+    var used = {};
+    for (var i = 0; i < idxs.length; i++) used[idxs[i]] = true;
     for (var c = 0; c < COLORS.length; c++) if (!used[c]) return c;
     return plots.length % COLORS.length;
   }

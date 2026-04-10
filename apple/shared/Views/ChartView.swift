@@ -36,7 +36,9 @@ struct ChartView: View {
     ]
     private let gridCount = 20
     private let inset: CGFloat = 0.05 // 5% padding inside chart edges
+    private let snapThresholdPx: CGFloat = 14 // drag x-snap tolerance (touch-friendly)
     @State private var isDragging = false
+    @State private var snappedX: Int? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -49,6 +51,9 @@ struct ChartView: View {
                 }
                 if let hl = highlightedPoint {
                     halo(size: size, highlight: hl)
+                }
+                if isDragging, let sx = snappedX {
+                    snapGuide(size: size, x: sx)
                 }
                 plotLines(size: size)
                 plotDots(size: size)
@@ -107,6 +112,17 @@ struct ChartView: View {
             path.addLine(to: CGPoint(x: px, y: size))
         }
         .stroke(Color.blue.opacity(0.35), lineWidth: 1)
+    }
+
+    private func snapGuide(size: CGFloat, x: Int) -> some View {
+        let pad = size * inset
+        let inner = size - 2 * pad
+        let px = pad + CGFloat(x) / 10000.0 * inner
+        return Path { path in
+            path.move(to: CGPoint(x: px, y: pad))
+            path.addLine(to: CGPoint(x: px, y: size - pad))
+        }
+        .stroke(Color(red: 0.04, green: 0.41, blue: 0.85).opacity(0.35), lineWidth: 1)
     }
 
     private func halo(size: CGFloat, highlight: PointHighlight) -> some View {
@@ -244,14 +260,38 @@ struct ChartView: View {
                         color: colorForPlot(plot, index: plotIndex)
                     ))
                 }
-                let norm = normalizedFromPixel(value.location, chartSize: chartSize)
-                onPointDragChanged?(point, CGPoint(x: CGFloat(norm.x), y: CGFloat(norm.y)))
+                let raw = normalizedFromPixel(value.location, chartSize: chartSize)
+                let snappedRawX = snapXToNeighbor(rawX: raw.x, excludeId: point.id, chartSize: chartSize)
+                snappedX = (snappedRawX != raw.x) ? snappedRawX : nil
+                onPointDragChanged?(point, CGPoint(x: CGFloat(snappedRawX), y: CGFloat(raw.y)))
             }
             .onEnded { value in
-                let norm = normalizedFromPixel(value.location, chartSize: chartSize)
-                onPointDragged?(point, CGPoint(x: CGFloat(norm.x), y: CGFloat(norm.y)))
+                let raw = normalizedFromPixel(value.location, chartSize: chartSize)
+                let snappedRawX = snapXToNeighbor(rawX: raw.x, excludeId: point.id, chartSize: chartSize)
+                onPointDragged?(point, CGPoint(x: CGFloat(snappedRawX), y: CGFloat(raw.y)))
+                snappedX = nil
                 isDragging = false
             }
+    }
+
+    // Snap the raw x (0-10000) to any other scene's x within snapThresholdPx
+    // pixel distance. Mirrors the webapp's SNAP_PX=12 behavior, with a
+    // slightly larger threshold to suit touch input.
+    private func snapXToNeighbor(rawX: Int, excludeId: Int, chartSize: CGFloat) -> Int {
+        let pad = chartSize * inset
+        let inner = chartSize - 2 * pad
+        let rawPx = pad + CGFloat(rawX) / 10000.0 * inner
+        var bestDist = snapThresholdPx + 1
+        var bestX = rawX
+        for pt in chartPoints where pt.id != excludeId {
+            let px = pad + CGFloat(pt.x_pos) / 10000.0 * inner
+            let d = abs(px - rawPx)
+            if d < bestDist {
+                bestDist = d
+                bestX = pt.x_pos
+            }
+        }
+        return bestX
     }
 
     private func chartPosition(_ point: ChartPoint, in size: CGFloat) -> CGPoint {

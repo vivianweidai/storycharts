@@ -91,6 +91,12 @@ class APIClient {
     ) async throws -> T {
         var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
+        // Cloudflare Access service token. Bypasses the interactive email
+        // OTP login flow so the app (and App Store reviewers) can reach
+        // the backend without needing to receive a PIN. Writes still
+        // require a CF_Authorization cookie from interactive sign-in.
+        req.addValue(APIConfig.cfAccessClientID, forHTTPHeaderField: "CF-Access-Client-Id")
+        req.addValue(APIConfig.cfAccessClientSecret, forHTTPHeaderField: "CF-Access-Client-Secret")
         if let token = authToken {
             req.addValue("CF_Authorization=\(token)", forHTTPHeaderField: "Cookie")
         }

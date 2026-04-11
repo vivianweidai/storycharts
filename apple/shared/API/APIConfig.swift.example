@@ -1,0 +1,17 @@
+import Foundation
+
+// Template for APIConfig.swift. Copy this file to APIConfig.swift (without
+// the .example suffix) and paste your Cloudflare Access service token
+// values. The real file is gitignored so secrets don't end up in the
+// public repository.
+//
+// To create a service token:
+//   1. Cloudflare Zero Trust dashboard → Access → Service auth → Service Tokens
+//   2. Create Service Token (name it something like "storycharts-ios-review")
+//   3. Copy the Client ID and Client Secret (shown only once)
+//   4. Add a Service Auth policy on the StoryCharts Access application that
+//      includes this service token
+enum APIConfig {
+    static let cfAccessClientID = "YOUR_CLIENT_ID.access"
+    static let cfAccessClientSecret = "YOUR_CLIENT_SECRET"
+}

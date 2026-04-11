@@ -7,23 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A100000001 /* StoryChartsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000001; };
-		A100000002 /* Story.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000010; };
-		A100000003 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011; };
-		A100000004 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012; };
-		A100000005 /* StoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000013; };
-		A100000006 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000014; };
-		A100000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000002; };
-		A100000008 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000015; };
-		A100000009 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016; };
-		A200000001 /* StoryChartsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001; };
-		A200000002 /* WatchStoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000002; };
-		A200000003 /* WatchStoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000003; };
-		A200000004 /* Story.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000010; };
-		A200000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011; };
-		A200000006 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012; };
-		A200000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B200000004; };
-		A200000008 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016; };
+		A100000001 /* StoryChartsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000001 /* StoryChartsApp.swift */; };
+		A100000002 /* Story.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000010 /* Story.swift */; };
+		A100000003 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011 /* APIClient.swift */; };
+		A100000004 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012 /* ChartView.swift */; };
+		A100000005 /* StoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000013 /* StoryListView.swift */; };
+		A100000006 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000014 /* StoryDetailView.swift */; };
+		A100000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000002 /* Assets.xcassets */; };
+		A100000008 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000015 /* AuthManager.swift */; };
+		A100000009 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016 /* BlockedUsers.swift */; };
+		A100000010 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000017 /* APIConfig.swift */; };
+		A200000001 /* StoryChartsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001 /* StoryChartsWatchApp.swift */; };
+		A200000002 /* WatchStoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000002 /* WatchStoryListView.swift */; };
+		A200000003 /* WatchStoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000003 /* WatchStoryDetailView.swift */; };
+		A200000004 /* Story.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000010 /* Story.swift */; };
+		A200000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011 /* APIClient.swift */; };
+		A200000006 /* ChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012 /* ChartView.swift */; };
+		A200000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B200000004 /* Assets.xcassets */; };
+		A200000008 /* BlockedUsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016 /* BlockedUsers.swift */; };
+		A200000009 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000017 /* APIConfig.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,7 @@
 		B100000014 /* StoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryDetailView.swift; sourceTree = "<group>"; };
 		B100000015 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		B100000016 /* BlockedUsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedUsers.swift; sourceTree = "<group>"; };
+		B100000017 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		B200000001 /* StoryChartsWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryChartsWatchApp.swift; sourceTree = "<group>"; };
 		B200000002 /* WatchStoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryListView.swift; sourceTree = "<group>"; };
 		B200000003 /* WatchStoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStoryDetailView.swift; sourceTree = "<group>"; };
@@ -48,14 +51,14 @@
 		D000000001 = {
 			isa = PBXGroup;
 			children = (
-				D000000010 /* Shared */,
-				D000000020 /* iPhone */,
-				D000000030 /* Watch */,
+				D000000010 /* shared */,
+				D000000020 /* iphone */,
+				D000000030 /* watch */,
 				D000000099 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		D000000010 /* Shared */ = {
+		D000000010 /* shared */ = {
 			isa = PBXGroup;
 			children = (
 				D000000011 /* Models */,
@@ -77,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				B100000011 /* APIClient.swift */,
+				B100000017 /* APIConfig.swift */,
 				B100000015 /* AuthManager.swift */,
 				B100000016 /* BlockedUsers.swift */,
 			);
@@ -93,7 +97,7 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		D000000020 /* iPhone */ = {
+		D000000020 /* iphone */ = {
 			isa = PBXGroup;
 			children = (
 				B100000001 /* StoryChartsApp.swift */,
@@ -102,7 +106,7 @@
 			path = iphone;
 			sourceTree = "<group>";
 		};
-		D000000030 /* Watch */ = {
+		D000000030 /* watch */ = {
 			isa = PBXGroup;
 			children = (
 				B200000001 /* StoryChartsWatchApp.swift */,
@@ -127,7 +131,7 @@
 /* Begin PBXNativeTarget section */
 		E100000001 /* StoryCharts */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F100000001;
+			buildConfigurationList = F100000001 /* Build configuration list for PBXNativeTarget "StoryCharts" */;
 			buildPhases = (
 				E100000010 /* Sources */,
 				E100000011 /* Resources */,
@@ -138,12 +142,12 @@
 			);
 			name = StoryCharts;
 			productName = StoryCharts;
-			productReference = C100000001;
+			productReference = C100000001 /* StoryCharts.app */;
 			productType = "com.apple.product-type.application";
 		};
 		E200000001 /* StoryCharts Watch */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F200000001;
+			buildConfigurationList = F200000001 /* Build configuration list for PBXNativeTarget "StoryCharts Watch" */;
 			buildPhases = (
 				E200000010 /* Sources */,
 				E200000011 /* Resources */,
@@ -154,7 +158,7 @@
 			);
 			name = "StoryCharts Watch";
 			productName = "StoryCharts Watch";
-			productReference = C200000001;
+			productReference = C200000001 /* StoryCharts Watch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -175,7 +179,7 @@
 					};
 				};
 			};
-			buildConfigurationList = F000000001;
+			buildConfigurationList = F000000001 /* Build configuration list for PBXProject "StoryCharts" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -184,7 +188,7 @@
 				Base,
 			);
 			mainGroup = D000000001;
-			productRefGroup = D000000099;
+			productRefGroup = D000000099 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -194,44 +198,12 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXSourcesBuildPhase section */
-		E100000010 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A100000001,
-				A100000002,
-				A100000003,
-				A100000004,
-				A100000005,
-				A100000006,
-				A100000008,
-				A100000009,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E200000010 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A200000001,
-				A200000002,
-				A200000003,
-				A200000004,
-				A200000005,
-				A200000006,
-				A200000008,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
 /* Begin PBXResourcesBuildPhase section */
 		E100000011 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A100000007,
+				A100000007 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,11 +211,45 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A200000007,
+				A200000007 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E100000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A100000001 /* StoryChartsApp.swift in Sources */,
+				A100000002 /* Story.swift in Sources */,
+				A100000003 /* APIClient.swift in Sources */,
+				A100000004 /* ChartView.swift in Sources */,
+				A100000005 /* StoryListView.swift in Sources */,
+				A100000006 /* StoryDetailView.swift in Sources */,
+				A100000008 /* AuthManager.swift in Sources */,
+				A100000009 /* BlockedUsers.swift in Sources */,
+				A100000010 /* APIConfig.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E200000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A200000001 /* StoryChartsWatchApp.swift in Sources */,
+				A200000002 /* WatchStoryListView.swift in Sources */,
+				A200000003 /* WatchStoryDetailView.swift in Sources */,
+				A200000004 /* Story.swift in Sources */,
+				A200000005 /* APIClient.swift in Sources */,
+				A200000006 /* ChartView.swift in Sources */,
+				A200000008 /* BlockedUsers.swift in Sources */,
+				A200000009 /* APIConfig.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		G000000001 /* Debug */ = {
@@ -294,8 +300,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CR3TXC4TRW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StoryCharts;
@@ -313,6 +320,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jamesdai.storycharts;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -328,7 +336,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CR3TXC4TRW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StoryCharts;
@@ -361,10 +369,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CR3TXC4TRW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "StoryCharts";
+				INFOPLIST_KEY_CFBundleDisplayName = StoryCharts;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.jamesdai.storycharts;
 				MARKETING_VERSION = 1.0;
@@ -386,10 +394,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CR3TXC4TRW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "StoryCharts";
+				INFOPLIST_KEY_CFBundleDisplayName = StoryCharts;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.jamesdai.storycharts;
 				MARKETING_VERSION = 1.0;
@@ -408,35 +416,34 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F000000001 /* Build configuration list for PBXProject */ = {
+		F000000001 /* Build configuration list for PBXProject "StoryCharts" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				G000000001,
-				G000000002,
+				G000000001 /* Debug */,
+				G000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F100000001 /* Build configuration list for StoryCharts */ = {
+		F100000001 /* Build configuration list for PBXNativeTarget "StoryCharts" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				G100000001,
-				G100000002,
+				G100000001 /* Debug */,
+				G100000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F200000001 /* Build configuration list for StoryCharts Watch */ = {
+		F200000001 /* Build configuration list for PBXNativeTarget "StoryCharts Watch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				G200000001,
-				G200000002,
+				G200000001 /* Debug */,
+				G200000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
-	rootObject = D099999999;
+	rootObject = D099999999 /* Project object */;
 }

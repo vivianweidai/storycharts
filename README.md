@@ -23,14 +23,3 @@ apple/           SwiftUI apps (iPhone, iPad, Apple Watch)
   iphone/        iOS app entry point
   watch/         watchOS app with chart playback
 ```
-
-## Development
-
-```sh
-npm install
-npm start        # wrangler pages dev www --d1=DB
-```
-
-## License
-
-All rights reserved.

@@ -2,6 +2,20 @@
 
 var COLORS = ['#4a7fd4','#e06040','#50a040','#b8b020','#9060c0','#2a9d8f','#e07098','#8a6540','#3b2f80','#e08050'];
 
+// Inject a tiny fixed-position "iOS app" link at the bottom-right of every
+// page the moment the DOM is ready. Styled in app.css as .ios-link so
+// pages don't need any per-page markup.
+document.addEventListener('DOMContentLoaded', function () {
+  if (document.querySelector('.ios-link')) return;
+  var a = document.createElement('a');
+  a.className = 'ios-link';
+  a.href = 'https://apps.apple.com/app/id6761986908';
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = 'iOS app';
+  document.body.appendChild(a);
+});
+
 async function api(method, path, body) {
   var opts = { method: method, headers: {} };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }

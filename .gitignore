@@ -6,4 +6,3 @@ package-lock.json
 xcuserdata/
 *.xcworkspace/
 apple/build/
-apple/shared/API/APIConfig.swift

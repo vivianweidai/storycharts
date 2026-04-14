@@ -7,6 +7,8 @@ struct StoryListView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var createdStoryId: Int?
+    @State private var showDemoPrompt = false
+    @State private var demoPassword = ""
 
     private var visibleStories: [StoryListItem] {
         stories.filter { !blocked.isBlocked($0.userid) }
@@ -52,11 +54,31 @@ struct StoryListView: View {
                         Label(auth.userEmail ?? "Account", systemImage: "person.crop.circle.fill")
                     }
                 } else {
-                    Button("Sign In") {
-                        Task { await signIn() }
+                    Menu {
+                        Button("Sign in with email", systemImage: "person.crop.circle") {
+                            Task { await signIn() }
+                        }
+                        Button("Demo account", systemImage: "star") {
+                            demoPassword = ""
+                            showDemoPrompt = true
+                        }
+                    } label: {
+                        Label("Sign In", systemImage: "person.crop.circle")
+                            .labelStyle(.titleOnly)
                     }
                 }
             }
+        }
+        .alert("Demo Account", isPresented: $showDemoPrompt) {
+            SecureField("Password", text: $demoPassword)
+            Button("Sign In") {
+                if demoPassword == "johnyappleseed" {
+                    auth.signInAsDemo()
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Enter the demo account password.")
         }
         .task {
             await loadStories()

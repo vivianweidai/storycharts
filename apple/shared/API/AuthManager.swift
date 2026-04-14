@@ -21,6 +21,11 @@ class AuthManager: NSObject, ObservableObject {
         }
     }
 
+    // Demo token for App Store review — pre-authenticated account
+    // that bypasses the Cloudflare OTP flow. Expires May 14, 2026.
+    static let demoEmail = "demo@storycharts.com"
+    private static let demoToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjdmMmFhNGQ1MWZkNjU1MTZmNzE1MjEzMzQwYmE1MzFiMmUwZWUyMDJmYjJiZDM3MmUxYTUwNDc2YWQ0NWJkOTcifQ.eyJhdWQiOlsiNmQ0MDNiNjVhYmU4MTgzYTc4YTc3NWJmNWEzNTIyM2I3NGM5NmM2ZDdlOTA1MDEzNTA1MTNiZDExZmM2N2QwMCJdLCJlbWFpbCI6ImphbWVzZGFpQGxqcmVzb3VyY2VzLmNvbSIsImV4cCI6MTc3ODc3NDM1OSwiaWF0IjoxNzc2MTQ2MzU5LCJuYmYiOjE3NzYxNDYzNTksImlzcyI6Imh0dHBzOi8vc3RvcnljaGFydHMuY2xvdWRmbGFyZWFjY2Vzcy5jb20iLCJ0eXBlIjoiYXBwIiwiaWRlbnRpdHlfbm9uY2UiOiJIOGxYclpkb2lidXNyb0gxIiwic3ViIjoiZmRhNWI2ZjgtZGU5NS01ZTVlLWE0ZWQtZDQ1NmUwNTY5MmQyIiwiY291bnRyeSI6IlVTIiwicG9saWN5X2lkIjoiYjFlNzAzMTItOTA0Mi00ZjEwLTllMzItOTM1M2EzNWRkMmI5In0.KjaB7i062Tci-FoqKsYxtXlj2Qy6YEw9hC3oWXxkslIvk0z4HMO2D4_nnqoudu8x5i4AYG_UYhgBU3jqag1sE9GZaQyrgfH-QGxVb9y0Tko24h2ODW8NsazigRk-fJ04ocENrjXMbYS470OsjduxrLgf6IaGftE0ZXJRy42jzAhgKXD7ApRFIjE_kUBTvhCpvlXdaT4disKBzWSzguFMnKJG0d8guu__gTrMia1X31-FsB_TyimGvYxkEd7Ya-wNtEriSAJtDKnjy4ozshTem9vY0c_JvRE6pqaHH5VwO5uvYAZkugB1BdaEJYr531FUGyqJx3zIMQqsrtu9mc2E9A"
+
     func signIn() async throws {
         let token = try await performWebAuth()
         // Save token
@@ -32,6 +37,15 @@ class AuthManager: NSObject, ObservableObject {
             userEmail = email
             UserDefaults.standard.set(email, forKey: emailKey)
         }
+        isAuthenticated = true
+    }
+
+    /// Sign in with the pre-authenticated demo account (for App Store review).
+    func signInAsDemo() {
+        KeychainHelper.save(key: tokenKey, value: Self.demoToken)
+        APIClient.shared.setAuthToken(Self.demoToken)
+        userEmail = Self.demoEmail
+        UserDefaults.standard.set(Self.demoEmail, forKey: emailKey)
         isAuthenticated = true
     }
 

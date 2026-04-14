@@ -66,6 +66,10 @@ class APIClient {
         }
     }
 
+    func deleteAccount() async throws {
+        let _: OKResponse = try await delete("account")
+    }
+
     // MARK: - Networking
 
     private func get<T: Decodable>(_ path: String) async throws -> T {

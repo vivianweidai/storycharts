@@ -57,6 +57,14 @@ class AuthManager: NSObject, ObservableObject {
         isAuthenticated = false
     }
 
+    /// Permanently delete the signed-in user's account. Deletes all stories
+    /// (plots and scenes cascade) on the server, then signs out locally.
+    /// Required by App Store guideline 5.1.1(v).
+    func deleteAccount() async throws {
+        try await APIClient.shared.deleteAccount()
+        signOut()
+    }
+
     private func performWebAuth() async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             let authURL = URL(string: "https://storycharts.com/api/auth/login?app=1")!

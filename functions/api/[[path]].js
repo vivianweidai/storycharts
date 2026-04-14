@@ -43,6 +43,9 @@ export async function onRequest(context) {
     // Chart points
     if (subM && subM[2] === 'chartpoints' && method === 'POST') return requireAuth(user) || saveChartPoints(env, user, subM[1], await request.json());
 
+    // Account
+    if (path === '/account' && method === 'DELETE') return requireAuth(user) || deleteAccount(env, user);
+
     // Admin
     if (path === '/admin/reset' && method === 'POST') return requireAuth(user) || resetAll(env);
 
@@ -242,6 +245,17 @@ async function saveChartPoints(env, user, storyId, body) {
     batch.push(ins.bind(storyId, cp.plot_id, Math.max(0, Math.min(10000, Math.round(cp.x_pos))), Math.max(0, Math.min(10000, Math.round(cp.y_val))), sanitize(cp.label, 2000, '')));
   }
   await env.DB.batch(batch);
+  return json({ ok: true });
+}
+
+// --- Account ---
+
+// Delete every story owned by the signed-in user. Plots and chart_points
+// cascade via ON DELETE CASCADE. Satisfies Apple App Store guideline
+// 5.1.1(v) which requires apps with account creation to offer in-app
+// account deletion.
+async function deleteAccount(env, user) {
+  await env.DB.prepare('DELETE FROM stories WHERE userid = ?').bind(user.userid).run();
   return json({ ok: true });
 }
 

@@ -9,6 +9,7 @@ struct StoryListView: View {
     @State private var createdStoryId: Int?
     @State private var showDemoPrompt = false
     @State private var demoPassword = ""
+    @State private var showDeleteConfirm = false
 
     private var visibleStories: [StoryListItem] {
         stories.filter { !blocked.isBlocked($0.userid) }
@@ -50,6 +51,9 @@ struct StoryListView: View {
                         Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                             auth.signOut()
                         }
+                        Button("Delete Account", systemImage: "trash", role: .destructive) {
+                            showDeleteConfirm = true
+                        }
                     } label: {
                         Label(auth.userEmail ?? "Account", systemImage: "person.crop.circle.fill")
                     }
@@ -79,6 +83,14 @@ struct StoryListView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Enter the demo account password.")
+        }
+        .alert("Delete Account", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                Task { await deleteAccount() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will permanently delete your account and all your stories. This cannot be undone.")
         }
         .task {
             await loadStories()
@@ -142,6 +154,15 @@ struct StoryListView: View {
             auth.signOut()
         } catch {
             errorMessage = "Failed to create story"
+        }
+    }
+
+    private func deleteAccount() async {
+        do {
+            try await auth.deleteAccount()
+            await loadStories()
+        } catch {
+            errorMessage = "Failed to delete account"
         }
     }
 }

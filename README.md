@@ -1,6 +1,6 @@
 # Story Charts
 
-Visualize your story's narrative structure. Drag scenes on a 2D chart to shape character arcs, track subplots, and see how your story flows — available on [web](https://storycharts.com), iPhone, iPad, and Apple Watch.
+Visualize your story's narrative structure. Drag scenes on a 2D chart to shape character arcs, track subplots, and see how your story flows — available on [web](https://storycharts.com) and on the [App Store](https://apps.apple.com/app/id6761986908) for iPhone, iPad, and Apple Watch.
 
 ## What It Does
 

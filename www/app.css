@@ -58,3 +58,24 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 
 
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }
+
+/* Discreet "iOS app" link injected by app.js on every page — fixed to
+   the bottom-right of the viewport in a muted gray capsule so it
+   doesn't compete with page content, lights up to the canonical link
+   color on hover. */
+.ios-link {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  font-size: 0.75em;
+  color: #8c959f;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-decoration: none;
+  z-index: 200;
+}
+.ios-link:hover {
+  color: #0969da;
+  text-decoration: none;
+}

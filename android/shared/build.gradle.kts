@@ -28,7 +28,6 @@ android {
 }
 
 dependencies {
-    api(libs.core.ktx)
     api(libs.security.crypto)
     api(libs.okhttp)
     api(libs.serialization.json)

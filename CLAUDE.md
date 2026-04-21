@@ -11,6 +11,7 @@ Hobby project at storycharts.com.
 - **Cloudflare D1** — SQLite database
 - **Cloudflare Access** — Zero Trust auth
 - **SwiftUI** — native Apple apps (iPhone, iPad, Apple Watch)
+- **Kotlin + Jetpack Compose** — native Android apps (phone + Wear OS)
 
 ## Structure
 
@@ -33,6 +34,11 @@ storycharts/
       views/                 # ChartView, StoryListView, StoryDetailView
     iphone/                  # iOS app (universal: iPhone + iPad)
     watch/                   # watchOS companion app (read-only charts)
+  android/                   # Gradle multi-module project
+    settings.gradle.kts      # includes :shared, :app, :wear
+    shared/                  # Android library — models, ApiClient, charts
+    app/                     # Phone app (com.jamesdai.storycharts)
+    wear/                    # Wear OS companion (read-only, auto-playback)
 ```
 
 ## Apple Apps
@@ -43,6 +49,16 @@ storycharts/
 - All platforms share models, API client, and ChartView via Shared/
 - Watch app is read-only (view stories and chart thumbnails)
 
+## Android Apps
+
+- Package: `com.jamesdai.storycharts` (phone + wear both — ship standalone)
+- Min SDK 26 (Android 8.0+), compile SDK 35, phone targetSdk 35, wear targetSdk 34
+  (wear-compose 1.4.0 crashes on targetSdk 35 — see comment in wear/build.gradle.kts)
+- Release signing: `android/keystore.properties` (git-ignored) points at
+  `~/keystores/storycharts-release.jks`
+- `:shared` library holds data + chart + playback code reused by both apps
+- OAuth callback handled via `storycharts://` deep link
+
 ## Data Model
 
 - **Stories** — title, userid (owner)
@@ -50,7 +66,7 @@ storycharts/
 - **Scenes** (chart_points in DB) — belong to a plot, stored as (x_pos, y_val) integers 0-10000
   - Displayed as percentages (0-100%) on a square chart
   - 5000 = 50% = midpoint (neutral baseline)
-  - Portable: any client (web, iOS) can interpret 0-10000 as normalized coordinates
+  - Portable: any client (web, iOS, Android) can interpret 0-10000 as normalized coordinates
 
 ## Chart
 

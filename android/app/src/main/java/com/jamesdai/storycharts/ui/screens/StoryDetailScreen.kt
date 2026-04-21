@@ -349,7 +349,7 @@ private suspend fun addScene(
     val targetPlotId = when {
         hl != null && hl.plotIndex < d.plots.size -> d.plots[hl.plotIndex].id
         d.plots.isNotEmpty() -> d.plots.last().id
-        else -> try { ApiClient.createPlot(storyId, "Plot A", 0).id } catch (_: Exception) { return }
+        else -> try { ApiClient.createPlot(storyId, plotNames[0], 0).id } catch (_: Exception) { return }
     }
     val payload = ChartPointPayload(targetPlotId, (0..10000).random(), (0..10000).random(), "New scene")
     try { ApiClient.saveChartPoints(storyId, chartPoints.toPayloads() + payload); reload() } catch (_: Exception) {}

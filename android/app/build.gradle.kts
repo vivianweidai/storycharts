@@ -66,14 +66,8 @@ android {
 dependencies {
     implementation(project(":shared"))
 
-    implementation(libs.lifecycle.runtime)
-    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
-
-    implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons)
     implementation(libs.navigation.compose)
-
-    implementation(libs.browser)
 }

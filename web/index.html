@@ -162,8 +162,14 @@
       renderHeader(user);
       renderFooter();
 
-      var stories = await api('GET', 'stories');
       var content = document.getElementById('content');
+      var stories;
+      try {
+        stories = await api('GET', 'stories');
+      } catch (e) {
+        content.innerHTML = '<p class="empty">Could not load stories. <a href="/api/auth/login?redirect=' + encodeURIComponent(location.pathname) + '">Sign in again</a>.</p>';
+        return;
+      }
 
       var html = '';
 

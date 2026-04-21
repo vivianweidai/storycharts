@@ -6,8 +6,14 @@ async function api(method, path, body) {
   var opts = { method: method, headers: {} };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   var res = await fetch('/api/' + path, opts);
-  if (!res.ok) { var e = await res.json().catch(function() { return { error: 'Failed' }; }); throw new Error(e.error || 'Failed'); }
-  return res.json();
+  var text = await res.text();
+  var data = null, parseErr = false;
+  if (text) { try { data = JSON.parse(text); } catch (_) { parseErr = true; } }
+  // A stale CF Access cookie can 200 with an HTML login page. Treat a
+  // non-JSON success the same as a network failure so callers don't have
+  // to special-case it (and the UI can't hang on an unhandled SyntaxError).
+  if (!res.ok || parseErr) throw new Error((data && data.error) || ('HTTP ' + res.status));
+  return data;
 }
 
 async function getUser() { try { return await api('GET', 'auth/me'); } catch(e) { return null; } }

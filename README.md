@@ -16,7 +16,7 @@ Create stories with multiple color-coded plots (character arcs, subplots, themes
 ## Project Structure
 
 ```
-www/             Static frontend (index.html, story.html, app.js)
+web/             Static frontend (index.html, story.html, app.js)
 functions/api/   Catch-all Cloudflare Worker handling REST API
 apple/           SwiftUI apps (iPhone, iPad, Apple Watch)
   shared/        Models, API client, auth, and views shared across platforms

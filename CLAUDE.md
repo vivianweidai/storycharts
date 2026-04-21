@@ -18,7 +18,7 @@ Hobby project at storycharts.com.
 storycharts/
   wrangler.toml              # Cloudflare config
   package.json               # wrangler dev dependency
-  www/                       # Static frontend
+  web/                       # Static frontend
     index.html               # Story listing + create
     story.html               # Chart editor (raw Canvas 2D)
     app.js                   # Shared: API client, modal, header

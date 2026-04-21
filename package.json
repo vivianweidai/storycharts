@@ -2,8 +2,8 @@
   "name": "storycharts",
   "private": true,
   "scripts": {
-    "dev": "wrangler pages dev www --d1=DB",
-    "deploy": "wrangler pages deploy www",
+    "dev": "wrangler pages dev web --d1=DB",
+    "deploy": "wrangler pages deploy web",
     "db:init": "wrangler d1 execute storycharts --file=schema.sql"
   },
   "devDependencies": {

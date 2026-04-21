@@ -7,3 +7,14 @@ xcuserdata/
 *.xcworkspace/
 apple/build/
 .claude/
+
+# Android
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.kotlin/
+android/*.iml
+android/app/*.iml

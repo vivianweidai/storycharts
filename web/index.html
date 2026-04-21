@@ -158,16 +158,26 @@
     }
 
     (async function() {
+      var content = document.getElementById('content');
+      function fallback(msg) {
+        content.innerHTML = '<p class="empty">' + msg + ' <a href="/api/auth/login?redirect=' +
+          encodeURIComponent(location.pathname) + '">Sign in again</a>.</p>';
+      }
+      // Safety net: if nothing renders within 20s, tell the user instead of
+      // leaving them on "Loading..." forever.
+      var stuck = setTimeout(function() { fallback('Taking longer than expected.'); }, 20000);
+      try {
+
       var user = await getUser();
       renderHeader(user);
       renderFooter();
 
-      var content = document.getElementById('content');
       var stories;
       try {
         stories = await api('GET', 'stories');
       } catch (e) {
-        content.innerHTML = '<p class="empty">Could not load stories. <a href="/api/auth/login?redirect=' + encodeURIComponent(location.pathname) + '">Sign in again</a>.</p>';
+        clearTimeout(stuck);
+        fallback('Could not load stories.');
         return;
       }
 
@@ -197,6 +207,7 @@
               '</div>';
 
       content.innerHTML = html;
+      clearTimeout(stuck);
 
       // Draw mini charts after layout
       requestAnimationFrame(function() {
@@ -259,6 +270,12 @@
           // Hide cursor after typing finishes
           setTimeout(function() { cursorEl.style.display = 'none'; }, lastType + 600);
         }, 15000);
+      }
+
+      } catch (err) {
+        clearTimeout(stuck);
+        fallback('Something went wrong.');
+        if (window.console) console.error(err);
       }
     })();
   </script>

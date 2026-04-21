@@ -5,6 +5,10 @@ var COLORS = ['#4a7fd4','#e06040','#50a040','#b8b020','#9060c0','#2a9d8f','#e070
 async function api(method, path, body) {
   var opts = { method: method, headers: {} };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  // 15s hard timeout so a hung fetch (CF Access login loop, flaky network,
+  // etc.) can't leave the UI stuck on "Loading..." forever.
+  var ctrl = ('AbortController' in window) ? new AbortController() : null;
+  if (ctrl) { opts.signal = ctrl.signal; setTimeout(function() { ctrl.abort(); }, 15000); }
   var res = await fetch('/api/' + path, opts);
   var text = await res.text();
   var data = null, parseErr = false;

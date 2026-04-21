@@ -18,7 +18,10 @@ android {
     defaultConfig {
         applicationId = "com.jamesdai.storycharts"
         minSdk = 26
-        targetSdk = 35
+        // wear-compose 1.4.0 reads Settings.Global.reduce_motion, which is
+        // restricted on targetSdk 35+. Pin to 34 until wear-compose ships a
+        // fix (tracked in https://issuetracker.google.com/issues/326299816).
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
     }

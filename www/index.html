@@ -83,6 +83,7 @@
 <body style="max-width:800px">
   <div class="header" id="header"></div>
   <div id="content"><p class="empty">Loading...</p></div>
+  <div class="footer" id="footer"></div>
 
   <script src="/app.js"></script>
   <script>
@@ -159,6 +160,7 @@
     (async function() {
       var user = await getUser();
       renderHeader(user);
+      renderFooter();
 
       var stories = await api('GET', 'stories');
       var content = document.getElementById('content');

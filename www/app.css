@@ -58,3 +58,12 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
 
 
 .empty { text-align: center; color: #656d76; padding: 40px 0; font-size: 0.95em; }
+
+.footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 48px; padding-top: 20px; border-top: 1px solid #d1d9e0;
+  font-size: 0.9em; color: #656d76;
+}
+.footer .footer-links { display: flex; gap: 1em; }
+.footer .footer-disabled { color: #aaa; cursor: not-allowed; }
+.footer .footer-right a { margin-left: auto; }

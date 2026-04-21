@@ -15,6 +15,7 @@
 <body>
   <div class="header" id="header"></div>
   <div id="content"><p class="empty">Loading...</p></div>
+  <div class="footer" id="footer"></div>
 
   <script src="/app.js"></script>
   <script>
@@ -618,6 +619,7 @@
   (async function() {
     var user = await getUser();
     renderHeader(user);
+    renderFooter();
     var id = new URLSearchParams(location.search).get('id');
     if (!id) { location.href = '/'; return; }
 

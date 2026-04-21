@@ -45,6 +45,7 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
     var showDemoPrompt by remember { mutableStateOf(false) }
     var demoPassword by remember { mutableStateOf("") }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -85,6 +86,9 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
                             })
                             DropdownMenuItem(text = { Text("Sign Out") }, onClick = {
                                 menuOpen = false; auth.signOut()
+                            })
+                            DropdownMenuItem(text = { Text("Delete Account") }, onClick = {
+                                menuOpen = false; showDeleteConfirm = true
                             })
                         } else {
                             DropdownMenuItem(text = { Text("Sign in with email") }, onClick = {
@@ -141,6 +145,21 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
                 }) { Text("Sign In") }
             },
             dismissButton = { TextButton(onClick = { showDemoPrompt = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Account") },
+            text = { Text("This will permanently delete your account and all your stories. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    scope.launch { try { auth.deleteAccount() } catch (_: Exception) {} }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
         )
     }
 }

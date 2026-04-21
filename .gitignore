@@ -18,3 +18,4 @@ android/captures/
 android/.kotlin/
 android/*.iml
 android/app/*.iml
+android/keystore.properties

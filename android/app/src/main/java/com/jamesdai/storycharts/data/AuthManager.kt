@@ -42,6 +42,13 @@ class AuthManager private constructor(context: Context) {
 
     fun signInWithToken(token: String) = setToken(token, decodeEmailFromJwt(token))
 
+    // Permanently deletes server-side data (stories, plots, scenes cascade)
+    // then signs out locally. Required by Apple/Play policies for account apps.
+    suspend fun deleteAccount() {
+        ApiClient.deleteAccount()
+        signOut()
+    }
+
     fun signOut() {
         prefs.edit().remove(KEY_TOKEN).remove(KEY_EMAIL).apply()
         ApiClient.authToken = null

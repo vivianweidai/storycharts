@@ -15,4 +15,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "storycharts"
+include(":shared")
 include(":app")
+include(":wear")

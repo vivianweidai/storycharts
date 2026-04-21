@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 val keystoreProps = Properties().apply {
@@ -13,7 +12,7 @@ val keystoreProps = Properties().apply {
 }
 
 android {
-    namespace = "com.jamesdai.storycharts"
+    namespace = "com.jamesdai.storycharts.wear"
     compileSdk = 35
 
     defaultConfig {
@@ -37,12 +36,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            isMinifyEnabled = false
             if (keystoreProps.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -66,14 +60,8 @@ android {
 dependencies {
     implementation(project(":shared"))
 
-    implementation(libs.lifecycle.runtime)
-    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
-
-    implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons)
-    implementation(libs.navigation.compose)
-
-    implementation(libs.browser)
+    implementation(libs.wear.compose.foundation)
+    implementation(libs.wear.compose.material)
+    implementation(libs.wear.compose.navigation)
 }

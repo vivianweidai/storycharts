@@ -19,3 +19,6 @@ android/.kotlin/
 android/*.iml
 android/app/*.iml
 android/keystore.properties
+android/shared/build/
+android/wear/build/
+android/playstore/

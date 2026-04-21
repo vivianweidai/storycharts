@@ -274,7 +274,9 @@
 
       } catch (err) {
         clearTimeout(stuck);
-        fallback('Something went wrong.');
+        var msg = (err && (err.message || err.toString())) || 'Unknown error';
+        content.innerHTML = '<p class="empty">Something went wrong: ' +
+          msg.replace(/[<>&]/g, '') + '</p>';
         if (window.console) console.error(err);
       }
     })();

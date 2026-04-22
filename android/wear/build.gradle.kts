@@ -22,8 +22,8 @@ android {
         // restricted on targetSdk 35+. Pin to 34 until wear-compose ships a
         // fix (tracked in https://issuetracker.google.com/issues/326299816).
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.0.2"
     }
 
     signingConfigs {

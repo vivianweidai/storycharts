@@ -5,16 +5,18 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
+// Canonical palette — mirrors web/app.js COLORS so plots look identical
+// across web, iOS, Android.
 val PlotColors = listOf(
-    Color(0xFF4A80D4),
-    Color(0xFFE06140),
-    Color(0xFF4FA140),
-    Color(0xFFD4A121),
-    Color(0xFF8F61BF),
-    Color(0xFF289E8E),
-    Color(0xFFE0709A),
-    Color(0xFF8A6640),
-    Color(0xFF4F4FB0),
+    Color(0xFF4A7FD4),
+    Color(0xFFE06040),
+    Color(0xFF50A040),
+    Color(0xFFB8B020),
+    Color(0xFF9060C0),
+    Color(0xFF2A9D8F),
+    Color(0xFFE07098),
+    Color(0xFF8A6540),
+    Color(0xFF3B2F80),
     Color(0xFFE08050),
 )
 

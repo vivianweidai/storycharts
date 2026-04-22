@@ -49,8 +49,8 @@ struct PlaybackSegment {
 }
 
 private let playbackSweepMs: Double = 1500  // sweep time for a full 0-10000 traversal
-private let playbackPauseMin: Double = 2.0
-private let playbackPauseMax: Double = 4.0
+private let playbackPauseMin: Double = 3.0
+private let playbackPauseMax: Double = 6.0
 
 private func pauseSeconds(for label: String) -> Double {
     let t = min(Double(label.count) / 60.0, 1.0)
@@ -152,17 +152,19 @@ struct ChartView: View {
     var highlightedPoint: PointHighlight? = nil
     var onPointTapped: ((PointHighlight?) -> Void)? = nil
 
+    // Canonical palette — mirrors web/app.js COLORS so plots look identical
+    // across web, iOS, Android. Values are the web hex decoded to sRGB 0–1.
     static let plotColors: [Color] = [
-        Color(red: 0.29, green: 0.50, blue: 0.83),
-        Color(red: 0.88, green: 0.38, blue: 0.25),
-        Color(red: 0.31, green: 0.63, blue: 0.25),
-        Color(red: 0.83, green: 0.63, blue: 0.13),
-        Color(red: 0.56, green: 0.38, blue: 0.75),
-        Color(red: 0.16, green: 0.62, blue: 0.56),
-        Color(red: 0.88, green: 0.44, blue: 0.60),
-        Color(red: 0.54, green: 0.40, blue: 0.25),
-        Color(red: 0.31, green: 0.31, blue: 0.69),
-        Color(red: 0.88, green: 0.50, blue: 0.31),
+        Color(red: 0x4A/255.0, green: 0x7F/255.0, blue: 0xD4/255.0),
+        Color(red: 0xE0/255.0, green: 0x60/255.0, blue: 0x40/255.0),
+        Color(red: 0x50/255.0, green: 0xA0/255.0, blue: 0x40/255.0),
+        Color(red: 0xB8/255.0, green: 0xB0/255.0, blue: 0x20/255.0),
+        Color(red: 0x90/255.0, green: 0x60/255.0, blue: 0xC0/255.0),
+        Color(red: 0x2A/255.0, green: 0x9D/255.0, blue: 0x8F/255.0),
+        Color(red: 0xE0/255.0, green: 0x70/255.0, blue: 0x98/255.0),
+        Color(red: 0x8A/255.0, green: 0x65/255.0, blue: 0x40/255.0),
+        Color(red: 0x3B/255.0, green: 0x2F/255.0, blue: 0x80/255.0),
+        Color(red: 0xE0/255.0, green: 0x80/255.0, blue: 0x50/255.0),
     ]
     private let gridCount = 20
     private let inset: CGFloat = 0.05 // 5% padding inside chart edges

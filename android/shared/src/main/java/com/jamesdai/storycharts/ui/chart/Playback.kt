@@ -34,8 +34,8 @@ data class PlaybackSegment(
 )
 
 private const val SWEEP_MS = 1500.0
-private const val PAUSE_MIN = 2.0
-private const val PAUSE_MAX = 4.0
+private const val PAUSE_MIN = 3.0
+private const val PAUSE_MAX = 6.0
 
 private fun pauseSeconds(label: String): Double {
     val t = minOf(label.length / 60.0, 1.0)

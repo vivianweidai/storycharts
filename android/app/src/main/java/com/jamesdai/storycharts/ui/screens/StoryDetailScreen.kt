@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.jamesdai.storycharts.data.*
 import com.jamesdai.storycharts.ui.chart.*
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,10 +74,7 @@ fun StoryDetailScreen(storyId: Int, onBack: () -> Unit) {
     }
 
     LaunchedEffect(detail?.story?.id, detail?.isOwner) {
-        if (detail?.isOwner == false && playJob == null && highlightedPoint == null) {
-            delay(3000)
-            if (playJob == null && highlightedPoint == null) play()
-        }
+        if (detail != null && detail?.isOwner != true && playJob == null && highlightedPoint == null) play()
     }
 
     suspend fun saveAll() {

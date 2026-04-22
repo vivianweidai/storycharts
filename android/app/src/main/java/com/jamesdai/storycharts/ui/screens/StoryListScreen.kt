@@ -29,6 +29,9 @@ import com.jamesdai.storycharts.data.StoryListItem
 import com.jamesdai.storycharts.ui.chart.ChartThumbnail
 import kotlinx.coroutines.launch
 
+// Must match functions/api/[[path]].js:144 and web/index.html:90.
+private const val MAX_STORIES_PER_USER = 30
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoryListScreen(onOpen: (Int) -> Unit) {
@@ -46,7 +49,13 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
     var showDemoPrompt by remember { mutableStateOf(false) }
     var demoPassword by remember { mutableStateOf("") }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showCapAlert by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    val myStoryCount = remember(stories, email) {
+        email?.let { e -> stories.count { it.userid == e } } ?: 0
+    }
+    val atCap = myStoryCount >= MAX_STORIES_PER_USER
 
     suspend fun load() {
         try { stories = ApiClient.listStories(); error = null }
@@ -75,15 +84,20 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
                                 )
                                 HorizontalDivider()
                             }
-                            DropdownMenuItem(text = { Text("Create Story") }, onClick = {
-                                menuOpen = false
-                                scope.launch {
-                                    try {
-                                        val resp = ApiClient.createStory("My Story")
-                                        onOpen(resp.id)
-                                    } catch (_: Exception) {}
-                                }
-                            })
+                            DropdownMenuItem(
+                                text = { Text("Create Story") },
+                                enabled = !atCap,
+                                onClick = {
+                                    menuOpen = false
+                                    if (atCap) { showCapAlert = true; return@DropdownMenuItem }
+                                    scope.launch {
+                                        try {
+                                            val resp = ApiClient.createStory("My Story")
+                                            onOpen(resp.id)
+                                        } catch (_: Exception) {}
+                                    }
+                                },
+                            )
                             DropdownMenuItem(text = { Text("Sign Out") }, onClick = {
                                 menuOpen = false; auth.signOut()
                             })
@@ -145,6 +159,15 @@ fun StoryListScreen(onOpen: (Int) -> Unit) {
                 }) { Text("Sign In") }
             },
             dismissButton = { TextButton(onClick = { showDemoPrompt = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showCapAlert) {
+        AlertDialog(
+            onDismissRequest = { showCapAlert = false },
+            title = { Text("Story Limit Reached") },
+            text = { Text("Maximum $MAX_STORIES_PER_USER stories per user. Delete a story to make room.") },
+            confirmButton = { TextButton(onClick = { showCapAlert = false }) { Text("OK") } },
         )
     }
 

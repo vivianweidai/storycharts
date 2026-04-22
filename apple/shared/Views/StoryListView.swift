@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct StoryListView: View {
+    // Must match functions/api/[[path]].js:144 and web/index.html:90.
+    static let maxStoriesPerUser = 30
+
     @EnvironmentObject var auth: AuthManager
     @ObservedObject private var blocked = BlockedUsers.shared
     @State private var stories: [StoryListItem] = []
@@ -10,10 +13,18 @@ struct StoryListView: View {
     @State private var showDemoPrompt = false
     @State private var demoPassword = ""
     @State private var showDeleteConfirm = false
+    @State private var showCapAlert = false
 
     private var visibleStories: [StoryListItem] {
         stories.filter { !blocked.isBlocked($0.userid) }
     }
+
+    private var myStoryCount: Int {
+        guard let email = auth.userEmail else { return 0 }
+        return stories.filter { $0.userid == email }.count
+    }
+
+    private var atStoryCap: Bool { myStoryCount >= Self.maxStoriesPerUser }
 
     var body: some View {
         Group {
@@ -46,8 +57,10 @@ struct StoryListView: View {
                 if auth.isAuthenticated {
                     Menu {
                         Button("Create Story", systemImage: "plus") {
-                            Task { await createStory() }
+                            if atStoryCap { showCapAlert = true }
+                            else { Task { await createStory() } }
                         }
+                        .disabled(atStoryCap)
                         Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
                             auth.signOut()
                         }
@@ -91,6 +104,11 @@ struct StoryListView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This will permanently delete your account and all your stories. This cannot be undone.")
+        }
+        .alert("Story Limit Reached", isPresented: $showCapAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Maximum \(Self.maxStoriesPerUser) stories per user. Delete a story to make room.")
         }
         .task {
             await loadStories()

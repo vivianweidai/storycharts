@@ -153,9 +153,8 @@ struct StoryDetailView: View {
         }
         .task {
             await loadStory()
-            // Auto-start playback for viewers after 3 seconds
+            // Auto-start playback immediately for viewers
             if let d = detail, !(d.isOwner ?? false) {
-                try? await Task.sleep(for: .seconds(3))
                 if !isPlaying && highlightedPoint == nil {
                     startPlayback()
                 }

@@ -4,7 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,9 +72,9 @@ fun ChartView(
                 }
                 .then(
                     if (isEditable) Modifier.pointerInput(plots, points) {
-                        detectDragGesturesAfterLongPress(
+                        detectDragGestures(
                             onDragStart = { offset ->
-                                val hit = hitTest(offset, plots, grouped, size, colorIdx, radius = 44f) ?: return@detectDragGesturesAfterLongPress
+                                val hit = hitTest(offset, plots, grouped, size, colorIdx, radius = 44f) ?: return@detectDragGestures
                                 draggingId = grouped[hit.plotIndex][hit.pointIndex].id
                                 onDragSelected(hit)
                             },
@@ -84,8 +84,8 @@ fun ChartView(
                             },
                             onDragCancel = { draggingId = null; snappedX = null },
                             onDrag = { change, _ ->
-                                val id = draggingId ?: return@detectDragGesturesAfterLongPress
-                                val pt = points.firstOrNull { it.id == id } ?: return@detectDragGesturesAfterLongPress
+                                val id = draggingId ?: return@detectDragGestures
+                                val pt = points.firstOrNull { it.id == id } ?: return@detectDragGestures
                                 val (rx, ry) = normalizedFromPixel(change.position, size)
                                 val sx = snapXToNeighbor(rx, id, points, size)
                                 snappedX = if (sx != rx) sx else null

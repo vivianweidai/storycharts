@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jamesdai.storycharts.data.*
@@ -285,6 +287,9 @@ private fun EditPanel(
     sceneLabel: String, onSceneLabelChange: (String) -> Unit, onSceneSubmit: () -> Unit,
     onDeletePlot: () -> Unit, onDeleteScene: () -> Unit,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
+    fun dismiss() { keyboard?.hide(); focus.clearFocus() }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -297,7 +302,7 @@ private fun EditPanel(
                 textStyle = MaterialTheme.typography.titleSmall
                     .copy(color = highlight.color, fontWeight = FontWeight.SemiBold),
                 label = { Text("Plot") },
-                keyboardActions = KeyboardActions(onDone = { onPlotSubmit() }),
+                keyboardActions = KeyboardActions(onDone = { onPlotSubmit(); dismiss() }),
             )
             IconButton(onClick = onDeletePlot) {
                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
@@ -309,7 +314,7 @@ private fun EditPanel(
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 label = { Text("Scene") },
-                keyboardActions = KeyboardActions(onDone = { onSceneSubmit() }),
+                keyboardActions = KeyboardActions(onDone = { onSceneSubmit(); dismiss() }),
             )
             IconButton(onClick = onDeleteScene) {
                 Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)

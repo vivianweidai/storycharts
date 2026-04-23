@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +49,10 @@ fun ChartView(
 ) {
     val colorIdx = remember(plots) { resolveColorIndices(plots.map { it.color }) }
     val grouped = remember(plots, points) { plots.map { points.scenesFor(it.id) } }
+    val latestPlots by rememberUpdatedState(plots)
+    val latestPoints by rememberUpdatedState(points)
+    val latestGrouped by rememberUpdatedState(grouped)
+    val latestColorIdx by rememberUpdatedState(colorIdx)
     var draggingId by remember { mutableStateOf<Int?>(null) }
     var snappedX by remember { mutableStateOf<Int?>(null) }
 
@@ -64,18 +69,20 @@ fun ChartView(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(plots, points) {
+                .pointerInput(Unit) {
+                    val tapRadius = 28.dp.toPx()
                     detectTapGestures { loc ->
                         if (draggingId != null) return@detectTapGestures
-                        onPointTap(hitTest(loc, plots, grouped, size, colorIdx))
+                        onPointTap(hitTest(loc, latestPlots, latestGrouped, size, latestColorIdx, radius = tapRadius))
                     }
                 }
                 .then(
-                    if (isEditable) Modifier.pointerInput(plots, points) {
+                    if (isEditable) Modifier.pointerInput(Unit) {
+                        val dragRadius = 36.dp.toPx()
                         detectDragGestures(
                             onDragStart = { offset ->
-                                val hit = hitTest(offset, plots, grouped, size, colorIdx, radius = 44f) ?: return@detectDragGestures
-                                draggingId = grouped[hit.plotIndex][hit.pointIndex].id
+                                val hit = hitTest(offset, latestPlots, latestGrouped, size, latestColorIdx, radius = dragRadius) ?: return@detectDragGestures
+                                draggingId = latestGrouped[hit.plotIndex][hit.pointIndex].id
                                 onDragSelected(hit)
                             },
                             onDragEnd = {
@@ -85,9 +92,9 @@ fun ChartView(
                             onDragCancel = { draggingId = null; snappedX = null },
                             onDrag = { change, _ ->
                                 val id = draggingId ?: return@detectDragGestures
-                                val pt = points.firstOrNull { it.id == id } ?: return@detectDragGestures
+                                val pt = latestPoints.firstOrNull { it.id == id } ?: return@detectDragGestures
                                 val (rx, ry) = normalizedFromPixel(change.position, size)
-                                val sx = snapXToNeighbor(rx, id, points, size)
+                                val sx = snapXToNeighbor(rx, id, latestPoints, size)
                                 snappedX = if (sx != rx) sx else null
                                 onPointDragChanged(pt, sx, ry)
                                 change.consume()

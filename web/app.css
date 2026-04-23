@@ -65,4 +65,5 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
   font-size: 0.9em; color: #656d76;
 }
 .footer .footer-links { display: flex; gap: 1em; }
+.footer .footer-muted { color: #9da5b0; }
 .footer .footer-right a { margin-left: auto; }

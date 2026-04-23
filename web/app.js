@@ -62,8 +62,7 @@ function renderFooter() {
   var f = document.getElementById('footer'); if (!f) return;
   f.innerHTML =
     '<div class="footer-links">' +
-      '<a href="https://apps.apple.com/app/id6761986908">App Store</a>' +
-      '<span class="footer-disabled">Google Play</span>' +
+      '<a href="https://apps.apple.com/app/id6761986908">AppStore</a>' +
     '</div>' +
     '<div class="footer-right">' +
       '<a href="https://github.com/vivianweidai/storycharts">GitHub</a>' +

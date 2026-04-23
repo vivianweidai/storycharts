@@ -64,11 +64,5 @@ h1 { font-size: 1.4em; margin-bottom: 0.5em; }
   margin-top: 32px; padding-top: 8px; border-top: 1px solid #d1d9e0;
   font-size: 0.9em; color: #656d76;
 }
-/* On the home page the create button sits between the chart-grid divider
-   and the footer's border; zero the footer's top margin there so the
-   button is vertically centered between the two horizontal lines.
-   `#content` wraps the create-section, so match via :has() on the sibling. */
-#content:has(.create-section) + .footer { margin-top: 0; }
 .footer .footer-links { display: flex; gap: 1em; }
-.footer .footer-disabled { color: #aaa; cursor: default; }
 .footer .footer-right a { margin-left: auto; }

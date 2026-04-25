@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct StoryListView: View {
-    // Must match functions/api/[[path]].js:144 and web/index.html:90.
+    // Must match pipeline/worker/src/index.js (createStory limit) and web/index.html.
     static let maxStoriesPerUser = 30
 
     @EnvironmentObject var auth: AuthManager

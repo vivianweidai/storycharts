@@ -1,0 +1,12 @@
+{
+  "name": "storycharts-worker",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --port 4321",
+    "deploy": "wrangler deploy",
+    "db:export": "wrangler d1 export storycharts --remote --output=../../scratch-backup.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

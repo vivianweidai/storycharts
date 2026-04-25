@@ -1,7 +1,17 @@
-// StoryCharts API — Cloudflare Pages Function (catch-all)
+// StoryCharts API — Cloudflare Worker with Static Assets
+// Routes /api/* to the handler below; everything else falls through to env.ASSETS.
 
-export async function onRequest(context) {
-  const { request, env } = context;
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/') || url.pathname === '/api') {
+      return handleApi(request, env);
+    }
+    return env.ASSETS.fetch(request);
+  }
+};
+
+async function handleApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api/, '');
   const method = request.method;
@@ -250,10 +260,7 @@ async function saveChartPoints(env, user, storyId, body) {
 
 // --- Account ---
 
-// Delete every story owned by the signed-in user. Plots and chart_points
-// cascade via ON DELETE CASCADE. Satisfies Apple App Store guideline
-// 5.1.1(v) which requires apps with account creation to offer in-app
-// account deletion.
+// Apple App Store guideline 5.1.1(v): in-app account deletion required.
 async function deleteAccount(env, user) {
   await env.DB.prepare('DELETE FROM stories WHERE userid = ?').bind(user.userid).run();
   return json({ ok: true });

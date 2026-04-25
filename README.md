@@ -11,14 +11,14 @@ Create stories with multiple color-coded plots (character arcs, subplots, themes
 - **Web** — HTML/JS/CSS with raw Canvas 2D rendering (no frameworks or charting libraries)
 - **iOS/watchOS** — SwiftUI, targeting iOS 17+ and watchOS 10+
 - **Android/Wear OS** — Kotlin + Jetpack Compose, min SDK 26
-- **Backend** — Cloudflare Pages Functions (D1 SQLite database)
+- **Backend** — Cloudflare Worker with Static Assets binding (D1 SQLite database)
 - **Auth** — Cloudflare Access (email-based OAuth)
 
 ## Project Structure
 
 ```
 web/             Static frontend (index.html, story.html, app.js)
-functions/api/   Catch-all Cloudflare Worker handling REST API
+pipeline/worker/ Cloudflare Worker — fetch handler + wrangler.toml + package.json
 apple/           SwiftUI apps (iPhone, iPad, Apple Watch)
   shared/        Models, API client, auth, and views shared across platforms
   iphone/        iOS app entry point

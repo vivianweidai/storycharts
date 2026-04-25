@@ -6,10 +6,9 @@ Hobby project at storycharts.com.
 
 ## Stack
 
-- **Cloudflare Pages** — static frontend (HTML/JS/CSS)
-- **Cloudflare Pages Functions** — backend API (single catch-all Worker)
+- **Cloudflare Workers + Static Assets** — single Worker serves `web/` static files and `/api/*` from one fetch handler
 - **Cloudflare D1** — SQLite database
-- **Cloudflare Access** — Zero Trust auth
+- **Cloudflare Access** — Zero Trust auth (login flow only; read API is public, mutations require auth)
 - **SwiftUI** — native Apple apps (iPhone, iPad, Apple Watch)
 - **Kotlin + Jetpack Compose** — native Android apps (phone + Wear OS)
 
@@ -17,15 +16,16 @@ Hobby project at storycharts.com.
 
 ```
 storycharts/
-  wrangler.toml              # Cloudflare config
-  package.json               # wrangler dev dependency
-  web/                       # Static frontend
+  pipeline/worker/           # Cloudflare Worker
+    wrangler.toml            #   Worker config + D1 + Static Assets bindings
+    package.json             #   pnpm dev/deploy scripts
+    src/index.js             #   fetch handler — routes /api/* + falls through to env.ASSETS
+  web/                       # Static frontend (served by env.ASSETS binding)
     index.html               # Story listing + create
     story.html               # Chart editor (raw Canvas 2D)
     app.js                   # Shared: API client, modal, header
     app.css                  # Styles
     favicon.ico              # Site icon
-  functions/api/[[path]].js  # All API routes (required name by Cloudflare)
   apple/                     # Native Apple apps
     StoryCharts.xcodeproj    # Xcode project (2 targets)
     shared/                  # Code shared across all Apple platforms
@@ -79,7 +79,8 @@ storycharts/
 
 ## Dev Workflow
 
-- Push to `main` auto-deploys to Cloudflare
+- GitHub is source control only — no auto-deploy
+- Deploy: `cd pipeline/worker && pnpm run deploy` (note: `pnpm deploy` is a built-in pnpm command, must use `run`)
+- Local dev: `cd pipeline/worker && pnpm dev` (port 4321; D1 + assets via local emulation, add `--remote` for live D1)
 - `POST /api/admin/reset` — delete all data (requires auth)
-- Always work on `main`, commit + push after changes
-- After completing a set of changes, always commit and push without being asked
+- Always work on `main`

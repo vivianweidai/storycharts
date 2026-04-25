@@ -1,0 +1,17 @@
+name = "storycharts"
+main = "src/index.js"
+compatibility_date = "2025-04-01"
+workers_dev = false
+
+routes = [
+  { pattern = "storycharts.com", custom_domain = true }
+]
+
+[assets]
+directory = "../../web"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "storycharts"
+database_id = "41752f86-e530-461e-aaa9-838c27b00e89"

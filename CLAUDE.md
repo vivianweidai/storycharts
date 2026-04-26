@@ -23,6 +23,8 @@ storycharts/
   web/                       # Static frontend (served by env.ASSETS binding)
     index.html               # Story listing + create
     story.html               # Chart editor (raw Canvas 2D)
+    privacy.html             # Privacy policy (App Store / Play Store requirement)
+    delete-account.html      # Account-deletion page (App Store / Play Store requirement)
     app.js                   # Shared: API client, modal, header
     app.css                  # Styles
     favicon.ico              # Site icon
